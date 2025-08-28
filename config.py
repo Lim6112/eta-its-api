@@ -7,9 +7,9 @@ TRAFFIC_API_KEY = "c0cfd6df07c34f1e818f1388d1132458"
 # Database Configuration
 DB_CONFIG = {
     'host': 'localhost',
-    'database': 'traffic_db',
-    'user': 'postgres',
-    'password': 'your_password',
+    'database': 'your_actual_database_name',  # Change this
+    'user': 'your_username',                  # Change this
+    'password': 'your_actual_password',       # Change this
     'port': 5432
 }
 
@@ -18,4 +18,4 @@ UPDATE_INTERVAL_MINUTES = 30
 ROUTE_HISTORY_DAYS = 7
 
 # OSRM Configuration
-OSRM_BASE_URL = "http://localhost:5000"
+OSRM_BASE_URL = "http://router.project-osrm.org"  # Public demo server
