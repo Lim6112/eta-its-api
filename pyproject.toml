@@ -10,4 +10,4 @@ dependencies = [
 ]
 
 [project.scripts]
-test = "test:main"
+test = "test:run_all_tests"
