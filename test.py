@@ -66,6 +66,7 @@ def test_full_workflow():
     """Test complete workflow"""
     print("Testing full workflow...")
     
+    from main import TrafficRouteMonitor
     monitor = TrafficRouteMonitor()
     
     # Add test route
