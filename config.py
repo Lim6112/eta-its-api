@@ -13,6 +13,9 @@ DB_CONFIG = {
     'port': 5432
 }
 
+# Add connection timeout and error handling
+DB_CONNECT_TIMEOUT = 10
+
 # Monitoring Configuration
 UPDATE_INTERVAL_MINUTES = 30
 ROUTE_HISTORY_DAYS = 7

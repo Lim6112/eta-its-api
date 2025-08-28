@@ -43,9 +43,21 @@ def test_database_connection():
     """Test database connection"""
     print("Testing Database connection...")
     try:
+        import psycopg2
+        from config import DB_CONFIG
+        
+        # Test basic connection first
+        conn = psycopg2.connect(**DB_CONFIG)
+        conn.close()
+        
+        # Then test ChangeMonitor
         monitor = ChangeMonitor()
         print("✓ Database connection working")
         return True
+    except psycopg2.OperationalError as e:
+        print(f"✗ Database connection failed: {e}")
+        print("  Check if PostgreSQL is running and credentials are correct")
+        return False
     except Exception as e:
         print(f"✗ Database failed: {e}")
         return False
