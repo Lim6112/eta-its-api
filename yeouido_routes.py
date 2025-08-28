@@ -49,6 +49,8 @@ def create_yeouido_routes():
         
         if route_data and 'routes' in route_data:
             route_info = route_data['routes'][0]
+            bbox = calculate_route_bbox(route_info['geometry'])  # Use actual geometry
+            
             routes.append({
                 'id': f"{start_key}_to_{end_key}",
                 'description': description,
@@ -59,7 +61,7 @@ def create_yeouido_routes():
                 'duration': route_info['duration'],
                 'distance': route_info['distance'],
                 'geometry': route_info['geometry'],
-                'bbox': calculate_route_bbox(start_coords, end_coords)
+                'bbox': bbox
             })
             print(f"  ✓ Duration: {route_info['duration']:.0f}s, Distance: {route_info['distance']:.0f}m")
         else:
@@ -67,19 +69,18 @@ def create_yeouido_routes():
     
     return routes
 
-def calculate_route_bbox(start_coords, end_coords):
-    """Calculate bounding box for traffic API"""
-    buffer = 0.005  # ~500m buffer
-    min_lat = min(start_coords[0], end_coords[0]) - buffer
-    max_lat = max(start_coords[0], end_coords[0]) + buffer
-    min_lng = min(start_coords[1], end_coords[1]) - buffer
-    max_lng = max(start_coords[1], end_coords[1]) + buffer
+def calculate_route_bbox(route_geometry, buffer=0.005):
+    """Calculate bounding box from actual route geometry"""
+    coordinates = route_geometry['coordinates']
+    
+    lngs = [coord[0] for coord in coordinates]
+    lats = [coord[1] for coord in coordinates]
     
     return {
-        'min_x': min_lng,
-        'max_x': max_lng,
-        'min_y': min_lat,
-        'max_y': max_lat
+        'min_x': min(lngs) - buffer,
+        'max_x': max(lngs) + buffer,
+        'min_y': min(lats) - buffer,
+        'max_y': max(lats) + buffer
     }
 
 def save_routes_to_file(routes, filename='yeouido_routes.json'):

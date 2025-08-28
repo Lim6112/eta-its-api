@@ -57,6 +57,22 @@ class RouteProcessor:
         conn.close()
         return matched_data
     
+    def calculate_route_bbox(self, route_geometry, buffer=0.005):
+        """Calculate proper bounding box from route geometry"""
+        coordinates = route_geometry['coordinates']
+        
+        # Extract all lat/lng points from route
+        lngs = [coord[0] for coord in coordinates]
+        lats = [coord[1] for coord in coordinates]
+        
+        # Find actual bounds of the route
+        min_lng = min(lngs) - buffer
+        max_lng = max(lngs) + buffer
+        min_lat = min(lats) - buffer
+        max_lat = max(lats) + buffer
+        
+        return (min_lng, max_lng, min_lat, max_lat)
+    
     def calculate_updated_route(self, original_route, traffic_data):
         """Calculate route with updated traffic speeds"""
         # This would integrate traffic speeds into OSRM calculation

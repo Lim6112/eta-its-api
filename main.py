@@ -20,16 +20,21 @@ class TrafficRouteMonitor:
         initial_route = self.route_processor.get_route_from_osrm(start_coords, end_coords)
         
         if initial_route:
+            # Calculate bbox from actual route geometry, not just endpoints
+            if bbox is None:
+                route_geometry = initial_route['routes'][0]['geometry']
+                bbox = self.route_processor.calculate_route_bbox(route_geometry)
+            
             self.routes[route_id] = {
                 'start_coords': start_coords,
                 'end_coords': end_coords,
-                'bbox': bbox or self._calculate_bbox(start_coords, end_coords),
+                'bbox': bbox,
                 'current_route': initial_route
             }
             
             # Store initial snapshot
             self.change_monitor.store_route_snapshot(route_id, initial_route['routes'][0])
-            print(f"Added route {route_id} for monitoring")
+            print(f"Added route {route_id} with bbox: {bbox}")
         else:
             print(f"Failed to get initial route for {route_id}")
     
