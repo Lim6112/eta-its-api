@@ -1,0 +1,12 @@
+[project]
+name = "traffic-route-monitor"
+version = "0.1.0"
+description = "Traffic route monitoring system"
+dependencies = [
+    "psycopg2-binary",
+    "requests",
+    "schedule"
+]
+
+[project.scripts]
+test = "test:main"

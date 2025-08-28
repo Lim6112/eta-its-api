@@ -115,5 +115,9 @@ def run_all_tests():
     else:
         print("⚠️  Some tests failed. Check configuration.")
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for uv run test"""
     run_all_tests()
+
+if __name__ == "__main__":
+    main()
