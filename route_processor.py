@@ -38,7 +38,7 @@ class RouteProcessor:
                 # Get actual coordinates from your network data
                 cur.execute("""
                     SELECT ST_X(geom) as lng, ST_Y(geom) as lat, speed_limit
-                    FROM moct_link 
+                    FROM moct_links 
                     WHERE link_id = %s
                 """, (item['linkId'],))
                 
