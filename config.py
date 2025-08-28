@@ -7,9 +7,9 @@ TRAFFIC_API_KEY = "c0cfd6df07c34f1e818f1388d1132458"
 # Database Configuration
 DB_CONFIG = {
     'host': 'localhost',
-    'database': 'your_actual_database_name',  # Change this
-    'user': 'your_username',                  # Change this
-    'password': 'your_actual_password',       # Change this
+    'database': 'byeongcheollim',  # Change this
+    'user': 'postgres',                  # Change this
+    'password': '',       # Change this
     'port': 5432
 }
 
