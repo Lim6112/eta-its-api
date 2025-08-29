@@ -210,18 +210,36 @@ class TrafficRouteMonitor:
             for item in data_items:
                 # Check for different possible field names
                 if 'trafficLevel' in item:
-                    traffic_levels.append(item['trafficLevel'])
+                    try:
+                        traffic_levels.append(float(item['trafficLevel']))
+                    except (ValueError, TypeError):
+                        pass
                 elif 'congestion' in item:
-                    congestion_levels.append(item['congestion'])
+                    try:
+                        congestion_levels.append(float(item['congestion']))
+                    except (ValueError, TypeError):
+                        pass
                 elif 'level' in item:
-                    traffic_levels.append(item['level'])
+                    try:
+                        traffic_levels.append(float(item['level']))
+                    except (ValueError, TypeError):
+                        pass
                 
                 if 'speed' in item:
-                    speeds.append(item['speed'])
+                    try:
+                        speeds.append(float(item['speed']))
+                    except (ValueError, TypeError):
+                        pass
                 elif 'velocity' in item:
-                    speeds.append(item['velocity'])
+                    try:
+                        speeds.append(float(item['velocity']))
+                    except (ValueError, TypeError):
+                        pass
                 elif 'avgSpeed' in item:
-                    speeds.append(item['avgSpeed'])
+                    try:
+                        speeds.append(float(item['avgSpeed']))
+                    except (ValueError, TypeError):
+                        pass
             
             if traffic_levels:
                 avg_traffic_level = sum(traffic_levels) / len(traffic_levels)
