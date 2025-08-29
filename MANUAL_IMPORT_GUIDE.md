@@ -3,7 +3,7 @@
 ## Remote PostgreSQL Server Information
 - **Host**: 13.125.10.58
 - **Port**: 5432  
-- **User**: postgres
+- **User**: ciel
 - **Password**: cielinc!@#
 - **Database**: postgres (or create a specific database)
 
@@ -15,7 +15,7 @@
 nc -zv 13.125.10.58 5432
 
 # Test PostgreSQL connection
-PGPASSWORD="cielinc!@#" psql -h 13.125.10.58 -p 5432 -U postgres -d postgres -c "SELECT version();"
+PGPASSWORD="cielinc!@#" psql -h 13.125.10.58 -p 5432 -U ciel -d postgres -c "SELECT version();"
 ```
 
 ### 2. Enable PostGIS Extension
@@ -38,7 +38,7 @@ ls -la "[2025-08-14]NODELINKDATA/"
 ### Step 1: Import MOCT_NODE (Intersection Points)
 ```bash
 PGPASSWORD="cielinc!@#" ogr2ogr -f "PostgreSQL" \
-  "PG:host=13.125.10.58 port=5432 dbname=postgres user=postgres password=cielinc!@#" \
+  "PG:host=13.125.10.58 port=5432 dbname=postgres user=ciel password=cielinc!@#" \
   "[2025-08-14]NODELINKDATA/MOCT_NODE.shp" \
   -nln moct_nodes \
   -t_srs EPSG:4326 \
@@ -53,7 +53,7 @@ PGPASSWORD="cielinc!@#" ogr2ogr -f "PostgreSQL" \
 ### Step 2: Import MOCT_LINK (Road Segments)
 ```bash
 PGPASSWORD="cielinc!@#" ogr2ogr -f "PostgreSQL" \
-  "PG:host=13.125.10.58 port=5432 dbname=postgres user=postgres password=cielinc!@#" \
+  "PG:host=13.125.10.58 port=5432 dbname=postgres user=ciel password=cielinc!@#" \
   "[2025-08-14]NODELINKDATA/MOCT_LINK.shp" \
   -nln moct_links \
   -t_srs EPSG:4326 \

@@ -8,7 +8,7 @@ set -e  # Exit on any error
 # Configuration
 REMOTE_HOST="13.125.10.58"
 REMOTE_PORT="5432"
-REMOTE_USER="postgres"
+REMOTE_USER="ciel"
 REMOTE_PASSWORD="cielinc!@#"
 REMOTE_DB="postgres"  # Change this if needed
 

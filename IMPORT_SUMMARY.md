@@ -42,7 +42,7 @@ I have prepared a complete setup for importing MOCT link and node data to the re
 
 ### Target Database
 - **Server**: 13.125.10.58:5432
-- **User**: postgres
+- **User**: ciel
 - **Password**: cielinc!@#
 - **Database**: postgres
 - **Tables**: `moct_nodes`, `moct_links`
