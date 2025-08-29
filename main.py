@@ -441,6 +441,186 @@ class TrafficRouteMonitor:
                 avg_speed = sum(speeds) / len(speeds)
                 print(f"     • {road}: {len(speeds)} slow segments, avg {avg_speed:.1f} km/h")
     
+    def _print_traffic_adjusted_route(self, route_info, traffic_matches):
+        """Print the route adjusted with current traffic data for comparison"""
+        print(f"\n📋 TRAFFIC-ADJUSTED ROUTE COMPARISON:")
+        print(f"{'='*60}")
+        
+        # Original route information
+        print(f"\n🔵 ORIGINAL ROUTE (OSRM Estimate):")
+        print(f"   📏 Total Distance: {route_info['distance']:.0f} meters ({route_info['distance']/1000:.2f} km)")
+        print(f"   ⏱️  Total Duration: {route_info['duration']:.0f} seconds ({route_info['duration']/60:.1f} minutes)")
+        print(f"   🚗 Average Speed: {(route_info['distance']/1000)/(route_info['duration']/3600):.1f} km/h")
+        
+        # Extract route steps for detailed comparison
+        if 'legs' in route_info and len(route_info['legs']) > 0:
+            print(f"\n   📍 Route Steps:")
+            total_original_time = 0
+            for i, leg in enumerate(route_info['legs']):
+                if 'steps' in leg:
+                    for j, step in enumerate(leg['steps']):
+                        step_name = step.get('name', 'unnamed')
+                        step_distance = step.get('distance', 0)
+                        step_duration = step.get('duration', 0)
+                        step_speed = (step_distance/1000)/(step_duration/3600) if step_duration > 0 else 0
+                        total_original_time += step_duration
+                        
+                        print(f"     {j+1}. {step_name}")
+                        print(f"        Distance: {step_distance:.0f}m, Duration: {step_duration:.1f}s, Speed: {step_speed:.1f} km/h")
+        
+        # Traffic-adjusted route information
+        print(f"\n🔴 TRAFFIC-ADJUSTED ROUTE (Current Conditions):")
+        
+        if not traffic_matches:
+            print(f"   ❌ No traffic data available - cannot adjust route")
+            return
+        
+        # Group traffic data by road names that match route steps
+        route_road_traffic = {}
+        other_traffic = []
+        
+        # Define the actual route roads
+        actual_route_roads = ['금낭화로', '양천로', '노들로', '양평로24길', '양평로22사길', '양평로22길', '선유로55길', '선유로53길']
+        
+        for match in traffic_matches:
+            road_name = match['road_name']
+            is_route_road = False
+            
+            for route_road in actual_route_roads:
+                if route_road in road_name or road_name in route_road:
+                    if route_road not in route_road_traffic:
+                        route_road_traffic[route_road] = []
+                    route_road_traffic[route_road].append(match)
+                    is_route_road = True
+                    break
+            
+            if not is_route_road:
+                other_traffic.append(match)
+        
+        # Calculate traffic-adjusted metrics for each route segment
+        print(f"   📍 Traffic-Adjusted Route Steps:")
+        total_traffic_time = 0
+        total_traffic_distance = 0
+        
+        for i, route_road in enumerate(actual_route_roads):
+            if route_road in route_road_traffic:
+                segments = route_road_traffic[route_road]
+                avg_traffic_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                segment_count = len(segments)
+                
+                # Estimate distance for this road segment (simplified)
+                # In a real implementation, you'd want to get actual segment lengths
+                estimated_distance = route_info['distance'] / len(actual_route_roads)  # Rough approximation
+                
+                # Calculate time based on traffic speed
+                traffic_time = (estimated_distance/1000) / avg_traffic_speed * 3600 if avg_traffic_speed > 0 else 0
+                
+                total_traffic_time += traffic_time
+                total_traffic_distance += estimated_distance
+                
+                # Compare with original
+                original_time = route_info['duration'] / len(actual_route_roads)  # Rough approximation
+                time_difference = traffic_time - original_time
+                time_diff_pct = (time_difference / original_time * 100) if original_time > 0 else 0
+                
+                status_icon = "🟢" if time_diff_pct < -10 else "🟡" if abs(time_diff_pct) <= 10 else "🔴"
+                
+                print(f"     {i+1}. {route_road} {status_icon}")
+                print(f"        Traffic Speed: {avg_traffic_speed:.1f} km/h ({segment_count} segments)")
+                print(f"        Estimated Time: {traffic_time:.1f}s (vs {original_time:.1f}s original)")
+                print(f"        Time Impact: {time_difference:+.1f}s ({time_diff_pct:+.1f}%)")
+            else:
+                print(f"     {i+1}. {route_road} ❌")
+                print(f"        No traffic data available")
+                print(f"        Using original estimate")
+                
+                # Use original estimate
+                estimated_time = route_info['duration'] / len(actual_route_roads)
+                total_traffic_time += estimated_time
+        
+        # Overall comparison
+        print(f"\n   📊 OVERALL COMPARISON:")
+        print(f"     Original Total Time: {route_info['duration']:.0f} seconds ({route_info['duration']/60:.1f} minutes)")
+        print(f"     Traffic-Adjusted Time: {total_traffic_time:.0f} seconds ({total_traffic_time/60:.1f} minutes)")
+        
+        time_difference = total_traffic_time - route_info['duration']
+        time_diff_pct = (time_difference / route_info['duration'] * 100) if route_info['duration'] > 0 else 0
+        
+        print(f"     Time Difference: {time_difference:+.0f} seconds ({time_diff_pct:+.1f}%)")
+        
+        if time_difference > 120:  # More than 2 minutes
+            print(f"     🔴 SIGNIFICANT DELAY: Expect {time_difference/60:.1f} minutes longer")
+        elif time_difference > 60:  # More than 1 minute
+            print(f"     🟡 MODERATE DELAY: Expect {time_difference/60:.1f} minutes longer")
+        elif time_difference < -60:  # More than 1 minute faster
+            print(f"     🟢 FASTER ROUTE: Expect {abs(time_difference)/60:.1f} minutes shorter")
+        else:
+            print(f"     🟢 SIMILAR TIME: Close to original estimate")
+        
+        # Print JSON format for easy comparison/export
+        print(f"\n📄 TRAFFIC-ADJUSTED ROUTE DATA (JSON):")
+        print(f"{'='*60}")
+        
+        traffic_adjusted_route = {
+            "route_name": "금낭화로_route_traffic_adjusted",
+            "timestamp": datetime.now().isoformat(),
+            "original_route": {
+                "distance_m": route_info['distance'],
+                "duration_s": route_info['duration'],
+                "average_speed_kmh": (route_info['distance']/1000)/(route_info['duration']/3600)
+            },
+            "traffic_adjusted": {
+                "estimated_duration_s": total_traffic_time,
+                "time_difference_s": time_difference,
+                "time_difference_pct": time_diff_pct,
+                "traffic_segments_used": len([r for r in route_road_traffic.values() if r])
+            },
+            "route_segments": []
+        }
+        
+        # Add detailed segment information
+        for i, route_road in enumerate(actual_route_roads):
+            segment_info = {
+                "segment_name": route_road,
+                "order": i + 1,
+                "has_traffic_data": route_road in route_road_traffic
+            }
+            
+            if route_road in route_road_traffic:
+                segments = route_road_traffic[route_road]
+                segment_info.update({
+                    "traffic_segments_count": len(segments),
+                    "average_speed_kmh": sum(s['current_speed'] for s in segments) / len(segments),
+                    "speed_range": {
+                        "min_kmh": min(s['current_speed'] for s in segments),
+                        "max_kmh": max(s['current_speed'] for s in segments)
+                    },
+                    "traffic_condition": self._assess_traffic_condition(sum(s['current_speed'] for s in segments) / len(segments))
+                })
+            
+            traffic_adjusted_route["route_segments"].append(segment_info)
+        
+        # Print formatted JSON
+        print(json.dumps(traffic_adjusted_route, indent=2, ensure_ascii=False))
+        
+        print(f"\n{'='*60}")
+        print(f"💡 Use this data to:")
+        print(f"   • Compare with your original route planning")
+        print(f"   • Adjust departure time if significant delays expected")
+        print(f"   • Consider alternative routes if traffic is heavy")
+        print(f"   • Monitor specific road segments that show congestion")
+    
+    def _assess_traffic_condition(self, speed_kmh):
+        """Assess traffic condition based on speed"""
+        if speed_kmh >= 50:
+            return "good_flow"
+        elif speed_kmh >= 30:
+            return "moderate_traffic"
+        elif speed_kmh >= 15:
+            return "heavy_traffic"
+        else:
+            return "congested"
+    
     def check_route_traffic(self, route_data, route_name="custom_route"):
         """Check traffic for a specific route from route data"""
         print(f"\n🔍 Checking traffic for route: {route_name}")
@@ -532,6 +712,9 @@ class TrafficRouteMonitor:
                     
                     # Compare route speed vs traffic speed
                     self._compare_route_vs_traffic_speeds(route_info, geographic_matches)
+                    
+                    # Print traffic-adjusted route for comparison
+                    self._print_traffic_adjusted_route(route_info, geographic_matches)
                     
                     # Show detailed info for first match
                     if geographic_matches:
