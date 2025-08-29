@@ -453,6 +453,7 @@ class TrafficRouteMonitor:
         print(f"   🚗 Average Speed: {(route_info['distance']/1000)/(route_info['duration']/3600):.1f} km/h")
         
         # Extract route steps for detailed comparison
+        route_steps = []
         if 'legs' in route_info and len(route_info['legs']) > 0:
             print(f"\n   📍 Route Steps:")
             total_original_time = 0
@@ -464,6 +465,13 @@ class TrafficRouteMonitor:
                         step_duration = step.get('duration', 0)
                         step_speed = (step_distance/1000)/(step_duration/3600) if step_duration > 0 else 0
                         total_original_time += step_duration
+                        
+                        route_steps.append({
+                            'name': step_name,
+                            'distance': step_distance,
+                            'duration': step_duration,
+                            'speed': step_speed
+                        })
                         
                         print(f"     {j+1}. {step_name}")
                         print(f"        Distance: {step_distance:.0f}m, Duration: {step_duration:.1f}s, Speed: {step_speed:.1f} km/h")
@@ -502,6 +510,64 @@ class TrafficRouteMonitor:
         total_traffic_time = 0
         total_traffic_distance = 0
         
+        # Match route steps with traffic data more accurately
+        step_traffic_mapping = {}
+        
+        # First, try to match route steps with traffic data
+        for step in route_steps:
+            step_name = step['name']
+            matched_traffic = []
+            
+            # Find traffic segments that match this step
+            for match in traffic_matches:
+                road_name = match['road_name']
+                # Check if this traffic segment belongs to the current route step
+                if (step_name and step_name in road_name) or (road_name and road_name in step_name):
+                    matched_traffic.append(match)
+            
+            if matched_traffic:
+                step_traffic_mapping[step_name] = matched_traffic
+        
+        # Now display each route step with its traffic-adjusted information
+        for i, step in enumerate(route_steps):
+            step_name = step['name']
+            step_distance = step['distance']
+            step_duration = step['duration']
+            step_speed = step['speed']
+            
+            if step_name in step_traffic_mapping:
+                segments = step_traffic_mapping[step_name]
+                avg_traffic_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                segment_count = len(segments)
+                
+                # Calculate time based on traffic speed and actual step distance
+                traffic_time = (step_distance/1000) / avg_traffic_speed * 3600 if avg_traffic_speed > 0 else step_duration
+                
+                total_traffic_time += traffic_time
+                
+                # Compare with original step duration
+                time_difference = traffic_time - step_duration
+                time_diff_pct = (time_difference / step_duration * 100) if step_duration > 0 else 0
+                
+                status_icon = "🟢" if time_diff_pct < -10 else "🟡" if abs(time_diff_pct) <= 10 else "🔴"
+                
+                print(f"     {i+1}. {step_name} {status_icon}")
+                print(f"        Original: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h")
+                print(f"        Traffic: {avg_traffic_speed:.1f} km/h ({segment_count} segments)")
+                print(f"        Updated: {step_distance:.0f}m, {traffic_time:.1f}s, {avg_traffic_speed:.1f} km/h")
+                print(f"        Time Impact: {time_difference:+.1f}s ({time_diff_pct:+.1f}%)")
+            else:
+                # No traffic data for this step
+                total_traffic_time += step_duration
+                
+                print(f"     {i+1}. {step_name} ❌")
+                print(f"        Original: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h")
+                print(f"        Traffic: No data available")
+                print(f"        Updated: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h (unchanged)")
+                print(f"        Time Impact: +0.0s (0.0%)")
+        
+        # Also show the aggregated route road analysis for comparison
+        print(f"\n   🗺️  Route Road Summary (Aggregated):")
         for i, route_road in enumerate(actual_route_roads):
             if route_road in route_road_traffic:
                 segments = route_road_traffic[route_road]
@@ -509,14 +575,10 @@ class TrafficRouteMonitor:
                 segment_count = len(segments)
                 
                 # Estimate distance for this road segment (simplified)
-                # In a real implementation, you'd want to get actual segment lengths
                 estimated_distance = route_info['distance'] / len(actual_route_roads)  # Rough approximation
                 
                 # Calculate time based on traffic speed
                 traffic_time = (estimated_distance/1000) / avg_traffic_speed * 3600 if avg_traffic_speed > 0 else 0
-                
-                total_traffic_time += traffic_time
-                total_traffic_distance += estimated_distance
                 
                 # Compare with original
                 original_time = route_info['duration'] / len(actual_route_roads)  # Rough approximation
@@ -533,10 +595,6 @@ class TrafficRouteMonitor:
                 print(f"     {i+1}. {route_road} ❌")
                 print(f"        No traffic data available")
                 print(f"        Using original estimate")
-                
-                # Use original estimate
-                estimated_time = route_info['duration'] / len(actual_route_roads)
-                total_traffic_time += estimated_time
         
         # Overall comparison
         print(f"\n   📊 OVERALL COMPARISON:")
