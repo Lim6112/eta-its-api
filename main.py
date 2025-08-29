@@ -188,7 +188,9 @@ class TrafficRouteMonitor:
         
         # Handle different possible response formats
         data_items = []
-        if 'data' in traffic_data:
+        if 'body' in traffic_data and 'items' in traffic_data['body']:
+            data_items = traffic_data['body']['items']
+        elif 'data' in traffic_data:
             data_items = traffic_data['data']
         elif 'response' in traffic_data:
             data_items = traffic_data['response'].get('data', [])
@@ -239,7 +241,7 @@ class TrafficRouteMonitor:
                 if isinstance(item, dict):
                     # Show key fields only for readability
                     key_fields = {}
-                    for key in ['linkId', 'nodeId', 'speed', 'trafficLevel', 'congestion', 'level', 'velocity', 'avgSpeed', 'roadName', 'roadType']:
+                    for key in ['linkId', 'nodeId', 'speed', 'trafficLevel', 'congestion', 'level', 'velocity', 'avgSpeed', 'roadName', 'roadType', 'roadGrade', 'roadType', 'startNodeId', 'endNodeId']:
                         if key in item:
                             key_fields[key] = item[key]
                     print(f"     {i+1}. {key_fields}")
@@ -259,6 +261,13 @@ class TrafficRouteMonitor:
                         print(f"     {key}: list with {len(value)} items")
                     elif isinstance(value, dict):
                         print(f"     {key}: dict with keys {list(value.keys())}")
+                        # Show body content if it exists
+                        if key == 'body' and 'totalCount' in value:
+                            print(f"       totalCount: {value['totalCount']}")
+                            if 'items' in value:
+                                print(f"       items: list with {len(value['items'])} items")
+                                if len(value['items']) > 0:
+                                    print(f"       first item keys: {list(value['items'][0].keys())}")
                     else:
                         print(f"     {key}: {type(value).__name__} = {value}")
 
