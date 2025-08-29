@@ -333,6 +333,114 @@ class TrafficRouteMonitor:
         print(f"      - Data freshness: {self._format_timestamp(match['created_date'])}")
         print(f"      - Geographic matching used (database spatial matching failed)")
     
+    def _compare_route_vs_traffic_speeds(self, route_info, traffic_matches):
+        """Compare route's expected speed vs actual traffic speeds"""
+        print(f"\n🚗 Route Speed vs Traffic Speed Analysis:")
+        
+        # Calculate route's implied average speed
+        route_duration_hours = route_info['duration'] / 3600  # Convert seconds to hours
+        route_distance_km = route_info['distance'] / 1000     # Convert meters to km
+        route_avg_speed = route_distance_km / route_duration_hours if route_duration_hours > 0 else 0
+        
+        print(f"   📊 Route Performance:")
+        print(f"     • Total distance: {route_distance_km:.2f} km")
+        print(f"     • Total duration: {route_info['duration']:.0f} seconds ({route_duration_hours*60:.1f} minutes)")
+        print(f"     • Route average speed: {route_avg_speed:.1f} km/h")
+        
+        if not traffic_matches:
+            print(f"   ❌ No traffic data available for comparison")
+            return
+        
+        # Calculate traffic-based speeds
+        traffic_speeds = [match['current_speed'] for match in traffic_matches]
+        traffic_avg_speed = sum(traffic_speeds) / len(traffic_speeds)
+        traffic_min_speed = min(traffic_speeds)
+        traffic_max_speed = max(traffic_speeds)
+        
+        print(f"\n   🚦 Current Traffic Conditions:")
+        print(f"     • Traffic segments analyzed: {len(traffic_matches)}")
+        print(f"     • Traffic average speed: {traffic_avg_speed:.1f} km/h")
+        print(f"     • Traffic speed range: {traffic_min_speed:.1f} - {traffic_max_speed:.1f} km/h")
+        
+        # Speed comparison analysis
+        speed_difference = traffic_avg_speed - route_avg_speed
+        speed_difference_pct = (speed_difference / route_avg_speed * 100) if route_avg_speed > 0 else 0
+        
+        print(f"\n   ⚖️  Speed Comparison:")
+        print(f"     • Speed difference: {speed_difference:+.1f} km/h ({speed_difference_pct:+.1f}%)")
+        
+        if speed_difference_pct > 10:
+            print(f"     ✅ Traffic is flowing FASTER than route estimate")
+            print(f"        → Current conditions are better than expected")
+            print(f"        → Actual travel time may be shorter")
+        elif speed_difference_pct < -10:
+            print(f"     🚨 Traffic is flowing SLOWER than route estimate")
+            print(f"        → Current conditions are worse than expected")
+            print(f"        → Actual travel time may be longer")
+        else:
+            print(f"     ✅ Traffic speed matches route estimate closely")
+            print(f"        → Current conditions align with route planning")
+        
+        # Estimate actual travel time based on traffic
+        if traffic_avg_speed > 0:
+            traffic_based_duration = (route_distance_km / traffic_avg_speed) * 3600  # Convert to seconds
+            time_difference = traffic_based_duration - route_info['duration']
+            time_difference_minutes = time_difference / 60
+            
+            print(f"\n   ⏱️  Travel Time Impact:")
+            print(f"     • Route estimated time: {route_info['duration']:.0f} seconds ({route_info['duration']/60:.1f} minutes)")
+            print(f"     • Traffic-based estimate: {traffic_based_duration:.0f} seconds ({traffic_based_duration/60:.1f} minutes)")
+            print(f"     • Time difference: {time_difference:+.0f} seconds ({time_difference_minutes:+.1f} minutes)")
+            
+            if time_difference_minutes > 2:
+                print(f"     ⚠️  Expect {time_difference_minutes:.1f} minutes LONGER than planned")
+            elif time_difference_minutes < -2:
+                print(f"     ✅ Expect {abs(time_difference_minutes):.1f} minutes SHORTER than planned")
+            else:
+                print(f"     ✅ Travel time should be close to route estimate")
+        
+        # Analyze speed distribution
+        print(f"\n   📈 Traffic Speed Distribution:")
+        
+        # Categorize speeds
+        fast_segments = [s for s in traffic_speeds if s >= 50]
+        moderate_segments = [s for s in traffic_speeds if 30 <= s < 50]
+        slow_segments = [s for s in traffic_speeds if 15 <= s < 30]
+        congested_segments = [s for s in traffic_speeds if s < 15]
+        
+        total_segments = len(traffic_speeds)
+        print(f"     • Fast flow (≥50 km/h): {len(fast_segments)} segments ({len(fast_segments)/total_segments*100:.1f}%)")
+        print(f"     • Moderate flow (30-49 km/h): {len(moderate_segments)} segments ({len(moderate_segments)/total_segments*100:.1f}%)")
+        print(f"     • Slow flow (15-29 km/h): {len(slow_segments)} segments ({len(slow_segments)/total_segments*100:.1f}%)")
+        print(f"     • Congested (<15 km/h): {len(congested_segments)} segments ({len(congested_segments)/total_segments*100:.1f}%)")
+        
+        # Overall traffic assessment
+        if len(congested_segments) > total_segments * 0.3:
+            assessment = "🔴 HEAVY CONGESTION"
+        elif len(slow_segments) + len(congested_segments) > total_segments * 0.5:
+            assessment = "🟠 MODERATE CONGESTION"
+        elif len(fast_segments) > total_segments * 0.6:
+            assessment = "🟢 GOOD FLOW"
+        else:
+            assessment = "🟡 MIXED CONDITIONS"
+        
+        print(f"\n   🎯 Overall Traffic Assessment: {assessment}")
+        
+        # Identify problem areas
+        if congested_segments or slow_segments:
+            print(f"\n   ⚠️  Potential Bottlenecks:")
+            problem_roads = {}
+            for match in traffic_matches:
+                if match['current_speed'] < 30:
+                    road = match['road_name']
+                    if road not in problem_roads:
+                        problem_roads[road] = []
+                    problem_roads[road].append(match['current_speed'])
+            
+            for road, speeds in problem_roads.items():
+                avg_speed = sum(speeds) / len(speeds)
+                print(f"     • {road}: {len(speeds)} slow segments, avg {avg_speed:.1f} km/h")
+    
     def check_route_traffic(self, route_data, route_name="custom_route"):
         """Check traffic for a specific route from route data"""
         print(f"\n🔍 Checking traffic for route: {route_name}")
@@ -421,6 +529,9 @@ class TrafficRouteMonitor:
                     
                     # Show route geometry analysis
                     self._analyze_route_geometry_coverage(route_info, geographic_matches)
+                    
+                    # Compare route speed vs traffic speed
+                    self._compare_route_vs_traffic_speeds(route_info, geographic_matches)
                     
                     # Show detailed info for first match
                     if geographic_matches:
