@@ -1095,7 +1095,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "api":
         # Run as API server
         from api import app
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=True, host='0.0.0.0', port=5001)
     else:
         # Run as standalone script (original behavior)
         monitor = TrafficRouteMonitor()
