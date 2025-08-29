@@ -475,6 +475,8 @@ class TrafficRouteMonitor:
                         
                         print(f"     {j+1}. {step_name}")
                         print(f"        Distance: {step_distance:.0f}m, Duration: {step_duration:.1f}s, Speed: {step_speed:.1f} km/h")
+        else:
+            print(f"\n   📍 Route Steps: No detailed step information available")
         
         # Traffic-adjusted route information
         print(f"\n🔴 TRAFFIC-ADJUSTED ROUTE (Current Conditions):")
@@ -529,42 +531,61 @@ class TrafficRouteMonitor:
                 step_traffic_mapping[step_name] = matched_traffic
         
         # Now display each route step with its traffic-adjusted information
-        for i, step in enumerate(route_steps):
-            step_name = step['name']
-            step_distance = step['distance']
-            step_duration = step['duration']
-            step_speed = step['speed']
-            
-            if step_name in step_traffic_mapping:
-                segments = step_traffic_mapping[step_name]
-                avg_traffic_speed = sum(s['current_speed'] for s in segments) / len(segments)
-                segment_count = len(segments)
+        if route_steps:
+            for i, step in enumerate(route_steps):
+                step_name = step['name']
+                step_distance = step['distance']
+                step_duration = step['duration']
+                step_speed = step['speed']
                 
-                # Calculate time based on traffic speed and actual step distance
-                traffic_time = (step_distance/1000) / avg_traffic_speed * 3600 if avg_traffic_speed > 0 else step_duration
-                
-                total_traffic_time += traffic_time
-                
-                # Compare with original step duration
-                time_difference = traffic_time - step_duration
-                time_diff_pct = (time_difference / step_duration * 100) if step_duration > 0 else 0
-                
-                status_icon = "🟢" if time_diff_pct < -10 else "🟡" if abs(time_diff_pct) <= 10 else "🔴"
-                
-                print(f"     {i+1}. {step_name} {status_icon}")
-                print(f"        Original: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h")
-                print(f"        Traffic: {avg_traffic_speed:.1f} km/h ({segment_count} segments)")
-                print(f"        Updated: {step_distance:.0f}m, {traffic_time:.1f}s, {avg_traffic_speed:.1f} km/h")
-                print(f"        Time Impact: {time_difference:+.1f}s ({time_diff_pct:+.1f}%)")
-            else:
-                # No traffic data for this step
-                total_traffic_time += step_duration
-                
-                print(f"     {i+1}. {step_name} ❌")
-                print(f"        Original: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h")
-                print(f"        Traffic: No data available")
-                print(f"        Updated: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h (unchanged)")
-                print(f"        Time Impact: +0.0s (0.0%)")
+                if step_name in step_traffic_mapping:
+                    segments = step_traffic_mapping[step_name]
+                    avg_traffic_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                    segment_count = len(segments)
+                    
+                    # Calculate time based on traffic speed and actual step distance
+                    traffic_time = (step_distance/1000) / avg_traffic_speed * 3600 if avg_traffic_speed > 0 else step_duration
+                    
+                    total_traffic_time += traffic_time
+                    
+                    # Compare with original step duration
+                    time_difference = traffic_time - step_duration
+                    time_diff_pct = (time_difference / step_duration * 100) if step_duration > 0 else 0
+                    
+                    status_icon = "🟢" if time_diff_pct < -10 else "🟡" if abs(time_diff_pct) <= 10 else "🔴"
+                    
+                    print(f"     {i+1}. {step_name} {status_icon}")
+                    print(f"        Original: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h")
+                    print(f"        Traffic: {avg_traffic_speed:.1f} km/h ({segment_count} segments)")
+                    print(f"        Updated: {step_distance:.0f}m, {traffic_time:.1f}s, {avg_traffic_speed:.1f} km/h")
+                    print(f"        Time Impact: {time_difference:+.1f}s ({time_diff_pct:+.1f}%)")
+                else:
+                    # No traffic data for this step
+                    total_traffic_time += step_duration
+                    
+                    print(f"     {i+1}. {step_name} ❌")
+                    print(f"        Original: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h")
+                    print(f"        Traffic: No data available")
+                    print(f"        Updated: {step_distance:.0f}m, {step_duration:.1f}s, {step_speed:.1f} km/h (unchanged)")
+                    print(f"        Time Impact: +0.0s (0.0%)")
+        else:
+            print(f"     No detailed route steps available - using aggregated road analysis")
+            # Calculate traffic time from aggregated road data
+            for i, route_road in enumerate(actual_route_roads):
+                if route_road in route_road_traffic:
+                    segments = route_road_traffic[route_road]
+                    avg_traffic_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                    
+                    # Estimate distance for this road segment (simplified)
+                    estimated_distance = route_info['distance'] / len(actual_route_roads)
+                    
+                    # Calculate time based on traffic speed
+                    traffic_time = (estimated_distance/1000) / avg_traffic_speed * 3600 if avg_traffic_speed > 0 else 0
+                    total_traffic_time += traffic_time
+                else:
+                    # Use proportional original time
+                    estimated_time = route_info['duration'] / len(actual_route_roads)
+                    total_traffic_time += estimated_time
         
         # Also show the aggregated route road analysis for comparison
         print(f"\n   🗺️  Route Road Summary (Aggregated):")
