@@ -179,39 +179,88 @@ class TrafficRouteMonitor:
     
     def _analyze_traffic_data(self, traffic_data, bbox):
         """Analyze and display traffic data"""
-        if not traffic_data or 'data' not in traffic_data:
+        if not traffic_data:
             print("📊 No traffic data to analyze")
             return
         
-        data_items = traffic_data.get('data', [])
         print(f"📊 Traffic analysis:")
+        print(f"   Raw response keys: {list(traffic_data.keys())}")
+        
+        # Handle different possible response formats
+        data_items = []
+        if 'data' in traffic_data:
+            data_items = traffic_data['data']
+        elif 'response' in traffic_data:
+            data_items = traffic_data['response'].get('data', [])
+        elif 'result' in traffic_data:
+            data_items = traffic_data['result']
+        elif isinstance(traffic_data, list):
+            data_items = traffic_data
+        
         print(f"   Total data points: {len(data_items)}")
         
         if len(data_items) > 0:
-            # Analyze traffic levels if available
+            # Analyze various possible field names for Korean traffic API
             traffic_levels = []
             speeds = []
+            congestion_levels = []
             
             for item in data_items:
+                # Check for different possible field names
                 if 'trafficLevel' in item:
                     traffic_levels.append(item['trafficLevel'])
+                elif 'congestion' in item:
+                    congestion_levels.append(item['congestion'])
+                elif 'level' in item:
+                    traffic_levels.append(item['level'])
+                
                 if 'speed' in item:
                     speeds.append(item['speed'])
+                elif 'velocity' in item:
+                    speeds.append(item['velocity'])
+                elif 'avgSpeed' in item:
+                    speeds.append(item['avgSpeed'])
             
             if traffic_levels:
                 avg_traffic_level = sum(traffic_levels) / len(traffic_levels)
                 print(f"   Average traffic level: {avg_traffic_level:.1f}")
             
+            if congestion_levels:
+                avg_congestion = sum(congestion_levels) / len(congestion_levels)
+                print(f"   Average congestion: {avg_congestion:.1f}")
+            
             if speeds:
                 avg_speed = sum(speeds) / len(speeds)
                 print(f"   Average speed: {avg_speed:.1f} km/h")
             
-            # Show sample data
+            # Show sample data with better formatting
             print(f"   Sample traffic points:")
             for i, item in enumerate(data_items[:3]):  # Show first 3 items
-                print(f"     {i+1}. {item}")
+                if isinstance(item, dict):
+                    # Show key fields only for readability
+                    key_fields = {}
+                    for key in ['linkId', 'nodeId', 'speed', 'trafficLevel', 'congestion', 'level', 'velocity', 'avgSpeed', 'roadName', 'roadType']:
+                        if key in item:
+                            key_fields[key] = item[key]
+                    print(f"     {i+1}. {key_fields}")
+                else:
+                    print(f"     {i+1}. {item}")
+            
+            # Show full structure of first item for debugging
+            if data_items and isinstance(data_items[0], dict):
+                print(f"   First item structure: {list(data_items[0].keys())}")
         else:
             print("   No detailed traffic data available")
+            # Show the full response structure for debugging
+            print(f"   Full response structure:")
+            if isinstance(traffic_data, dict):
+                for key, value in traffic_data.items():
+                    if isinstance(value, list):
+                        print(f"     {key}: list with {len(value)} items")
+                    elif isinstance(value, dict):
+                        print(f"     {key}: dict with keys {list(value.keys())}")
+                    else:
+                        print(f"     {key}: {type(value).__name__} = {value}")
 
     def start_monitoring(self):
         """Start the monitoring service"""
