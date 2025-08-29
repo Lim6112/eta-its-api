@@ -176,15 +176,21 @@ class TrafficRouteMonitor:
                     
                     # Calculate route-specific metrics
                     total_length = sum(link['length_m'] for link in matched_traffic if 'length_m' in link)
-                    avg_speed_on_route = sum(link['current_speed'] for link in matched_traffic) / len(matched_traffic)
-                    
-                    print(f"   Total matched road length: {total_length:.0f} meters")
-                    print(f"   Average speed on route: {avg_speed_on_route:.1f} km/h")
-                    
-                    # Show closest traffic segments
-                    print(f"   Closest traffic segments:")
-                    for i, link in enumerate(matched_traffic[:5]):
-                        print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h (distance: {link['distance_to_route_m']:.0f}m)")
+                    if len(matched_traffic) > 0:
+                        avg_speed_on_route = sum(link['current_speed'] for link in matched_traffic) / len(matched_traffic)
+                        print(f"   Total matched road length: {total_length:.0f} meters")
+                        print(f"   Average speed on route: {avg_speed_on_route:.1f} km/h")
+                        
+                        # Show closest traffic segments
+                        print(f"   Closest traffic segments:")
+                        for i, link in enumerate(matched_traffic[:5]):
+                            distance_str = f" (distance: {link['distance_to_route_m']:.0f}m)" if 'distance_to_route_m' in link else ""
+                            print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h{distance_str}")
+                else:
+                    print(f"🛣️  No traffic data matched to route - this could mean:")
+                    print(f"   - The route links are not in the traffic database")
+                    print(f"   - The link IDs don't match between OSRM and traffic API")
+                    print(f"   - The database table structure is different than expected")
                 
                 return {
                     'route_data': route_info,

@@ -68,21 +68,23 @@ class RouteProcessor:
                 
             try:
                 # Find links that intersect with route buffer
-                cur.execute("""
-                    SELECT 
-                        link_id,
-                        ST_X(ST_StartPoint(geom)) as start_lng,
-                        ST_Y(ST_StartPoint(geom)) as start_lat,
-                        ST_X(ST_EndPoint(geom)) as end_lng,
-                        ST_Y(ST_EndPoint(geom)) as end_lat,
-                        ST_Length(geom::geography) as length_m,
-                        ST_Distance(geom::geography, ST_GeomFromText(%s, 4326)::geography) as distance_to_route
-                    FROM moct_link 
-                    WHERE link_id = %s
-                    AND ST_DWithin(geom::geography, ST_GeomFromText(%s, 4326)::geography, %s)
-                """, (route_wkt, link_id, route_wkt, buffer_distance))
+                # Try different possible table names
+                table_queries = [
+                    "SELECT link_id, ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat, ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat, ST_Length(geom::geography) as length_m, ST_Distance(geom::geography, ST_GeomFromText(%s, 4326)::geography) as distance_to_route FROM moct_link WHERE link_id = %s AND ST_DWithin(geom::geography, ST_GeomFromText(%s, 4326)::geography, %s)",
+                    "SELECT linkid as link_id, ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat, ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat, ST_Length(geom::geography) as length_m, ST_Distance(geom::geography, ST_GeomFromText(%s, 4326)::geography) as distance_to_route FROM moct_link_table WHERE linkid = %s AND ST_DWithin(geom::geography, ST_GeomFromText(%s, 4326)::geography, %s)",
+                    "SELECT link_id, ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat, ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat, ST_Length(geom::geography) as length_m, ST_Distance(geom::geography, ST_GeomFromText(%s, 4326)::geography) as distance_to_route FROM links WHERE link_id = %s AND ST_DWithin(geom::geography, ST_GeomFromText(%s, 4326)::geography, %s)"
+                ]
                 
-                result = cur.fetchone()
+                result = None
+                for query in table_queries:
+                    try:
+                        cur.execute(query, (route_wkt, link_id, route_wkt, buffer_distance))
+                        result = cur.fetchone()
+                        if result:
+                            break
+                    except psycopg2.Error:
+                        continue
+                
                 if result:
                     matched_data.append({
                         'link_id': link_id,
@@ -153,14 +155,23 @@ class RouteProcessor:
             if link_id:
                 try:
                     # Get actual coordinates from your network data
-                    cur.execute("""
-                        SELECT ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat,
-                               ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat
-                        FROM moct_link 
-                        WHERE link_id = %s
-                    """, (link_id,))
+                    # Try different possible table names
+                    table_queries = [
+                        "SELECT ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat, ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat FROM moct_link WHERE link_id = %s",
+                        "SELECT ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat, ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat FROM moct_link_table WHERE linkid = %s",
+                        "SELECT ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat, ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat FROM links WHERE link_id = %s"
+                    ]
                     
-                    result = cur.fetchone()
+                    result = None
+                    for query in table_queries:
+                        try:
+                            cur.execute(query, (link_id,))
+                            result = cur.fetchone()
+                            if result:
+                                break
+                        except psycopg2.Error:
+                            continue
+                    
                     if result:
                         matched_data.append({
                             'link_id': link_id,
