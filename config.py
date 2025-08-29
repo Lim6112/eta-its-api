@@ -6,10 +6,10 @@ TRAFFIC_API_KEY = "c0cfd6df07c34f1e818f1388d1132458"
 
 # Database Configuration
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'byeongcheollim',  # Change this
-    'user': 'postgres',                  # Change this
-    'password': '',       # Change this
+    'host': '13.125.10.58',
+    'database': 'byeongcheollim',
+    'user': 'ciel',
+    'password': 'cielinc!@#',
     'port': 5432
 }
 
