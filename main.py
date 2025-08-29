@@ -688,6 +688,9 @@ class TrafficRouteMonitor:
         print(f"   • Adjust departure time if significant delays expected")
         print(f"   • Consider alternative routes if traffic is heavy")
         print(f"   • Monitor specific road segments that show congestion")
+        
+        # Print traffic-adjusted route in original format
+        self._print_traffic_adjusted_route_original_format(route_info, traffic_matches, step_traffic_mapping, total_traffic_time)
     
     def _assess_traffic_condition(self, speed_kmh):
         """Assess traffic condition based on speed"""
@@ -699,6 +702,140 @@ class TrafficRouteMonitor:
             return "heavy_traffic"
         else:
             return "congested"
+    
+    def _print_traffic_adjusted_route_original_format(self, route_info, traffic_matches, step_traffic_mapping, total_traffic_time):
+        """Print the traffic-adjusted route in the original route data format"""
+        print(f"\n📋 TRAFFIC-ADJUSTED ROUTE (Original Format):")
+        print(f"{'='*60}")
+        
+        # Create the traffic-adjusted route structure following the original format
+        traffic_adjusted_route = {
+            "resultCode": "Ok",
+            "result": [
+                {
+                    "waypoints": [
+                        {
+                            "waypointType": "break",
+                            "name": "금낭화로",
+                            "location": {
+                                "longitude": 126.812902,
+                                "latitude": 37.577833
+                            }
+                        },
+                        {
+                            "waypointType": "last", 
+                            "name": "선유로53길",
+                            "location": {
+                                "longitude": 126.895589,
+                                "latitude": 37.538431
+                            }
+                        }
+                    ],
+                    "routes": [
+                        {
+                            "weight_name": "",
+                            "weight": 0,
+                            "legs": [
+                                {
+                                    "summary": "양천로, 노들로",
+                                    "steps": [],
+                                    "duration": total_traffic_time,
+                                    "distance": route_info['distance']
+                                }
+                            ],
+                            "geometry": route_info.get('geometry', ''),
+                            "duration": total_traffic_time,
+                            "distance": route_info['distance']
+                        }
+                    ],
+                    "code": "Ok"
+                }
+            ]
+        }
+        
+        # Update the steps with traffic-adjusted durations
+        if 'legs' in route_info and len(route_info['legs']) > 0:
+            original_steps = route_info['legs'][0].get('steps', [])
+            updated_steps = []
+            
+            for step in original_steps:
+                step_name = step.get('name', 'unnamed')
+                step_distance = step.get('distance', 0)
+                original_duration = step.get('duration', 0)
+                
+                # Check if we have traffic data for this step
+                if step_name in step_traffic_mapping:
+                    segments = step_traffic_mapping[step_name]
+                    avg_traffic_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                    
+                    # Calculate traffic-adjusted duration
+                    if avg_traffic_speed > 0:
+                        traffic_duration = (step_distance/1000) / avg_traffic_speed * 3600
+                    else:
+                        traffic_duration = original_duration
+                else:
+                    # No traffic data, use original duration
+                    traffic_duration = original_duration
+                
+                # Create updated step
+                updated_step = step.copy()
+                updated_step['duration'] = traffic_duration
+                
+                # Add traffic info to the step for reference
+                if step_name in step_traffic_mapping:
+                    segments = step_traffic_mapping[step_name]
+                    avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                    updated_step['traffic_info'] = {
+                        'segments_count': len(segments),
+                        'average_speed_kmh': avg_speed,
+                        'original_duration': original_duration,
+                        'traffic_duration': traffic_duration,
+                        'time_difference': traffic_duration - original_duration
+                    }
+                
+                updated_steps.append(updated_step)
+            
+            traffic_adjusted_route["result"][0]["routes"][0]["legs"][0]["steps"] = updated_steps
+        
+        # Print the formatted JSON
+        print(json.dumps(traffic_adjusted_route, indent=2, ensure_ascii=False))
+        
+        print(f"\n📊 DURATION COMPARISON SUMMARY:")
+        print(f"   Original total duration: {route_info['duration']:.1f} seconds ({route_info['duration']/60:.1f} minutes)")
+        print(f"   Traffic-adjusted duration: {total_traffic_time:.1f} seconds ({total_traffic_time/60:.1f} minutes)")
+        print(f"   Time difference: {total_traffic_time - route_info['duration']:+.1f} seconds ({(total_traffic_time - route_info['duration'])/60:+.1f} minutes)")
+        
+        if 'legs' in route_info and len(route_info['legs']) > 0:
+            original_steps = route_info['legs'][0].get('steps', [])
+            print(f"\n📍 STEP-BY-STEP DURATION UPDATES:")
+            
+            for i, step in enumerate(original_steps):
+                step_name = step.get('name', 'unnamed')
+                original_duration = step.get('duration', 0)
+                
+                if step_name in step_traffic_mapping:
+                    segments = step_traffic_mapping[step_name]
+                    avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                    step_distance = step.get('distance', 0)
+                    
+                    if avg_speed > 0:
+                        traffic_duration = (step_distance/1000) / avg_speed * 3600
+                    else:
+                        traffic_duration = original_duration
+                    
+                    time_diff = traffic_duration - original_duration
+                    time_diff_pct = (time_diff / original_duration * 100) if original_duration > 0 else 0
+                    
+                    status = "🟢" if time_diff_pct < -10 else "🟡" if abs(time_diff_pct) <= 10 else "🔴"
+                    
+                    print(f"   {i+1:2d}. {step_name} {status}")
+                    print(f"       Original: {original_duration:.1f}s → Traffic-adjusted: {traffic_duration:.1f}s ({time_diff:+.1f}s, {time_diff_pct:+.1f}%)")
+                    print(f"       Traffic speed: {avg_speed:.1f} km/h ({len(segments)} segments)")
+                else:
+                    print(f"   {i+1:2d}. {step_name} ❌")
+                    print(f"       Original: {original_duration:.1f}s → No traffic data (unchanged)")
+        
+        print(f"\n{'='*60}")
     
     def check_route_traffic(self, route_data, route_name="custom_route"):
         """Check traffic for a specific route from route data"""
