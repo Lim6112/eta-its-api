@@ -1090,264 +1090,272 @@ class TrafficRouteMonitor:
             time.sleep(60)  # Check every minute
 
 if __name__ == "__main__":
-    monitor = TrafficRouteMonitor()
+    import sys
     
-    # Your specific route data
-    route_data = {
-        "resultCode": "Ok",
-        "result": [
-            {
-                "waypoints": [
-                    {
-                        "waypointType": "break",
-                        "name": "금낭화로",
-                        "location": {
-                            "longitude": 126.812902,
-                            "latitude": 37.577833
+    if len(sys.argv) > 1 and sys.argv[1] == "api":
+        # Run as API server
+        from api import app
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    else:
+        # Run as standalone script (original behavior)
+        monitor = TrafficRouteMonitor()
+        
+        # Your specific route data
+        route_data = {
+            "resultCode": "Ok",
+            "result": [
+                {
+                    "waypoints": [
+                        {
+                            "waypointType": "break",
+                            "name": "금낭화로",
+                            "location": {
+                                "longitude": 126.812902,
+                                "latitude": 37.577833
+                            }
+                        },
+                        {
+                            "waypointType": "last",
+                            "name": "선유로53길",
+                            "location": {
+                                "longitude": 126.895589,
+                                "latitude": 37.538431
+                            }
                         }
-                    },
-                    {
-                        "waypointType": "last",
-                        "name": "선유로53길",
-                        "location": {
-                            "longitude": 126.895589,
-                            "latitude": 37.538431
-                        }
-                    }
-                ],
-                "routes": [
-                    {
-                        "weight_name": "",
-                        "weight": 0,
-                        "legs": [
-                            {
-                                "summary": "양천로, 노들로",
-                                "steps": [
-                                    {
-                                        "name": "금낭화로",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "depart",
-                                            "modifier": "left",
-                                            "location": {
-                                                "longitude": 126.812902,
-                                                "latitude": 37.577833
-                                            },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
-                                        },
-                                        "intersections": [
-                                            {
-                                                "out": 0,
+                    ],
+                    "routes": [
+                        {
+                            "weight_name": "",
+                            "weight": 0,
+                            "legs": [
+                                {
+                                    "summary": "양천로, 노들로",
+                                    "steps": [
+                                        {
+                                            "name": "금낭화로",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "depart",
+                                                "modifier": "left",
                                                 "location": {
                                                     "longitude": 126.812902,
                                                     "latitude": 37.577833
                                                 },
-                                                "indications": [
-                                                    "uturn"
-                                                ],
-                                                "in": None,
-                                                "entry": [
-                                                    True
-                                                ],
-                                                "bearings": [
-                                                    196
-                                                ]
-                                            }
-                                        ],
-                                        "instruction": "left",
-                                        "geometry": "mljdFsc_eWnD~@vCv@tAx@tAp@VH~@PbBLX@v@FJ@dADZ@",
-                                        "duration": 39.9,
-                                        "distance": 511.0
-                                    },
-                                    {
-                                        "name": "양천로",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "turn",
-                                            "modifier": "left",
-                                            "location": {
-                                                "longitude": 126.811448,
-                                                "latitude": 37.573428
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "intersections": [
+                                                {
+                                                    "out": 0,
+                                                    "location": {
+                                                        "longitude": 126.812902,
+                                                        "latitude": 37.577833
+                                                    },
+                                                    "indications": [
+                                                        "uturn"
+                                                    ],
+                                                    "in": None,
+                                                    "entry": [
+                                                        True
+                                                    ],
+                                                    "bearings": [
+                                                        196
+                                                    ]
+                                                }
+                                            ],
+                                            "instruction": "left",
+                                            "geometry": "mljdFsc_eWnD~@vCv@tAx@tAp@VH~@PbBLX@v@FJ@dADZ@",
+                                            "duration": 39.9,
+                                            "distance": 511.0
                                         },
-                                        "instruction": "left",
-                                        "geometry": "}pidFqz~dWE_AG{BF{@@aG@u@HiGBiE?S@O?c@@sA@iCByG@iE?CDcGN{DPoDDc@VoKDeB^sNZoNJmFB{@PwDLgAJa@^iAn@kAdFgK|@qB|DoJZq@bAyBb@aAp@}ABKRg@^w@h@iAZs@|@kBnBoEL[f@gAt@gBZs@FMnCoGhAiCh@oADIr@cBpAyCLYjCcGpCuGNYrB}EnDcJ`@eAJW^w@~AiDHQlBgEHOn@{ATi@N[bDaH^{@~@yBDKP_@v@kBxCqHN_@N]pBoEZo@bB}BlA_BLQ@AdAyAZq@f@gA^iAJ[L_@@G`@mAdBmER_@R_@nAgBf@k@dDwDHInB_Cd@m@pA_Cv@_BRa@Ne@RcAhAmGPaATuAf@qCh@_FXqAFYDQRw@Ze@r@}@|EqF",
-                                        "duration": 391.1,
-                                        "distance": 6980.5
-                                    },
-                                    {
-                                        "name": "",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "turn",
-                                            "modifier": "right",
-                                            "location": {
-                                                "longitude": 126.880236,
-                                                "latitude": 37.547234
+                                        {
+                                            "name": "양천로",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "turn",
+                                                "modifier": "left",
+                                                "location": {
+                                                    "longitude": 126.811448,
+                                                    "latitude": 37.573428
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "left",
+                                            "geometry": "}pidFqz~dWE_AG{BF{@@aG@u@HiGBiE?S@O?c@@sA@iCByG@iE?CDcGN{DPoDDc@VoKDeB^sNZoNJmFB{@PwDLgAJa@^iAn@kAdFgK|@qB|DoJZq@bAyBb@aAp@}ABKRg@^w@h@iAZs@|@kBnBoEL[f@gAt@gBZs@FMnCoGhAiCh@oADIr@cBpAyCLYjCcGpCuGNYrB}EnDcJ`@eAJW^w@~AiDHQlBgEHOn@{ATi@N[bDaH^{@~@yBDKP_@v@kBxCqHN_@N]pBoEZo@bB}BlA_BLQ@AdAyAZq@f@gA^iAJ[L_@@G`@mAdBmER_@R_@nAgBf@k@dDwDHInB_Cd@m@pA_Cv@_BRa@Ne@RcAhAmGPaATuAf@qCh@_FXqAFYDQRw@Ze@r@}@|EqF",
+                                            "duration": 391.1,
+                                            "distance": 6980.5
                                         },
-                                        "instruction": "right",
-                                        "geometry": "emddFohleWT@PDPLLRBZA\\Mx@INMLWBOEMISYWs@",
-                                        "duration": 23.2,
-                                        "distance": 192.0
-                                    },
-                                    {
-                                        "name": "노들로",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "new name",
-                                            "modifier": "straight",
-                                            "location": {
-                                                "longitude": 126.879749,
-                                                "latitude": 37.547535
+                                        {
+                                            "name": "",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "turn",
+                                                "modifier": "right",
+                                                "location": {
+                                                    "longitude": 126.880236,
+                                                    "latitude": 37.547234
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "right",
+                                            "geometry": "emddFohleWT@PDPLLRBZA\\Mx@INMLWBOEMISYWs@",
+                                            "duration": 23.2,
+                                            "distance": 192.0
                                         },
-                                        "instruction": "straight",
-                                        "geometry": "coddFmeleWUiA[qBUeBI_AAU?[BiADk@Fy@Ls@Li@Zw@zB{FxCeHd@uAbBeEhBsExBsF|@yBjAuC`BoDfByDhDmHXo@",
-                                        "duration": 85.1,
-                                        "distance": 1534.5
-                                    },
-                                    {
-                                        "name": "양평로24길",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "turn",
-                                            "modifier": "right",
-                                            "location": {
-                                                "longitude": 126.894753,
-                                                "latitude": 37.541688
+                                        {
+                                            "name": "노들로",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "new name",
+                                                "modifier": "straight",
+                                                "location": {
+                                                    "longitude": 126.879749,
+                                                    "latitude": 37.547535
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "straight",
+                                            "geometry": "coddFmeleWUiA[qBUeBI_AAU?[BiADk@Fy@Ls@Li@Zw@zB{FxCeHd@uAbBeEhBsExBsF|@yBjAuC`BoDfByDhDmHXo@",
+                                            "duration": 85.1,
+                                            "distance": 1534.5
                                         },
-                                        "instruction": "right",
-                                        "geometry": "qjcdFecoeWRA",
-                                        "duration": 1.7,
-                                        "distance": 11.5
-                                    },
-                                    {
-                                        "name": "양평로22사길",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "fork",
-                                            "modifier": "slight left",
-                                            "location": {
-                                                "longitude": 126.894756,
-                                                "latitude": 37.541585
+                                        {
+                                            "name": "양평로24길",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "turn",
+                                                "modifier": "right",
+                                                "location": {
+                                                    "longitude": 126.894753,
+                                                    "latitude": 37.541688
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "right",
+                                            "geometry": "qjcdFecoeWRA",
+                                            "duration": 1.7,
+                                            "distance": 11.5
                                         },
-                                        "instruction": "slight left",
-                                        "geometry": "}icdFgcoeW`@Gr@WNQFOtAyCHIFE",
-                                        "duration": 15.4,
-                                        "distance": 165.1
-                                    },
-                                    {
-                                        "name": "양평로22길",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "turn",
-                                            "modifier": "right",
-                                            "location": {
-                                                "longitude": 126.895942,
-                                                "latitude": 37.540522
+                                        {
+                                            "name": "양평로22사길",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "fork",
+                                                "modifier": "slight left",
+                                                "location": {
+                                                    "longitude": 126.894756,
+                                                    "latitude": 37.541585
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "slight left",
+                                            "geometry": "}icdFgcoeW`@Gr@WNQFOtAyCHIFE",
+                                            "duration": 15.4,
+                                            "distance": 165.1
                                         },
-                                        "instruction": "right",
-                                        "geometry": "gccdFsjoeWtA`AfAt@hAz@",
-                                        "duration": 19.2,
-                                        "distance": 151.6
-                                    },
-                                    {
-                                        "name": "선유로55길",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "turn",
-                                            "modifier": "left",
-                                            "location": {
-                                                "longitude": 126.895038,
-                                                "latitude": 37.539363
+                                        {
+                                            "name": "양평로22길",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "turn",
+                                                "modifier": "right",
+                                                "location": {
+                                                    "longitude": 126.895942,
+                                                    "latitude": 37.540522
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "right",
+                                            "geometry": "gccdFsjoeWtA`AfAt@hAz@",
+                                            "duration": 19.2,
+                                            "distance": 151.6
                                         },
-                                        "instruction": "left",
-                                        "geometry": "_|bdF_eoeWp@gBd@mA",
-                                        "duration": 15.6,
-                                        "distance": 94.8
-                                    },
-                                    {
-                                        "name": "선유로53길",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "turn",
-                                            "modifier": "right",
-                                            "location": {
-                                                "longitude": 126.895953,
-                                                "latitude": 37.538916
+                                        {
+                                            "name": "선유로55길",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "turn",
+                                                "modifier": "left",
+                                                "location": {
+                                                    "longitude": 126.895038,
+                                                    "latitude": 37.539363
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "left",
+                                            "geometry": "_|bdF_eoeWp@gBd@mA",
+                                            "duration": 15.6,
+                                            "distance": 94.8
                                         },
-                                        "instruction": "right",
-                                        "geometry": "gybdFujoeW`BfA",
-                                        "duration": 9.1,
-                                        "distance": 62.8
-                                    },
-                                    {
-                                        "name": "선유로53길",
-                                        "mode": "driving",
-                                        "maneuver": {
-                                            "type": "arrive",
-                                            "modifier": "right",
-                                            "location": {
-                                                "longitude": 126.895589,
-                                                "latitude": 37.538431
+                                        {
+                                            "name": "선유로53길",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "turn",
+                                                "modifier": "right",
+                                                "location": {
+                                                    "longitude": 126.895953,
+                                                    "latitude": 37.538916
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
                                             },
-                                            "bearing_before": 0,
-                                            "bearing_after": 0
+                                            "instruction": "right",
+                                            "geometry": "gybdFujoeW`BfA",
+                                            "duration": 9.1,
+                                            "distance": 62.8
                                         },
-                                        "instruction": "right",
-                                        "geometry": "evbdFmhoeW",
-                                        "duration": 0.0,
-                                        "distance": 0.0
-                                    }
-                                ],
-                                "duration": 600.3,
-                                "distance": 9703.7
-                            }
-                        ],
-                        "geometry": "mljdFsc_eWnD~@vCv@tAx@tAp@VH~@PbBLX@v@FJ@dADZ@E_AG{BF{@@aG@u@HiGBiE?S@O?c@@sA@iCByG@iE?CDcGN{DPoDDc@VoKDeB^sNZoNJmFB{@PwDLgAJa@^iAn@kAdFgK|@qB|DoJZq@bAyBb@aAp@}ABKRg@^w@h@iAZs@|@kBnBoEL[f@gAt@gBZs@FMnCoGhAiCh@oADIr@cBpAyCLYjCcGpCuGNYrB}EnDcJ`@eAJW^w@~AiDHQlBgEHOn@{ATi@N[bDaH^{@~@yBDKP_@v@kBxCqHN_@N]pBoEZo@bB}BlA_BLQ@AdAyAZq@f@gA^iAJ[L_@@G`@mAdBmER_@R_@nAgBf@k@dDwDHInB_Cd@m@pA_Cv@_BRa@Ne@RcAhAmGPaATuAf@qCh@_FXqAFYDQRw@Ze@r@}@|EqFT@PDPLLRBZA\\Mx@INMLWBOEMISYWs@UiA[qBUeBI_AAU?[BiADk@Fy@Ls@Li@Zw@zB{FxCeHd@uAbBeEhBsExBsF|@yBjAuC`BoDfByDhDmHXo@RA`@Gr@WNQFOtAyCHIFEtA`AfAt@hAz@p@gBd@mA`BfA",
-                        "duration": 600.3,
-                        "distance": 9703.7
-                    }
-                ],
-                "code": "Ok"
-            }
-        ]
-    }
-    
-    # Check traffic for your specific route
-    result = monitor.check_route_traffic(route_data, "금낭화로_route")
-    
-    if result:
-        print(f"\n✅ Traffic check completed successfully!")
-        print(f"📄 Results saved to database")
-    else:
-        print(f"\n❌ Traffic check failed")
-    
-    # Optionally, you can also add it to continuous monitoring
-    # start_coords = [37.577833, 126.812902]  # lat, lng
-    # end_coords = [37.577824, 126.812899]
-    # monitor.add_route("금낭화로_continuous", start_coords, end_coords)
-    # monitor.start_monitoring()
+                                        {
+                                            "name": "선유로53길",
+                                            "mode": "driving",
+                                            "maneuver": {
+                                                "type": "arrive",
+                                                "modifier": "right",
+                                                "location": {
+                                                    "longitude": 126.895589,
+                                                    "latitude": 37.538431
+                                                },
+                                                "bearing_before": 0,
+                                                "bearing_after": 0
+                                            },
+                                            "instruction": "right",
+                                            "geometry": "evbdFmhoeW",
+                                            "duration": 0.0,
+                                            "distance": 0.0
+                                        }
+                                    ],
+                                    "duration": 600.3,
+                                    "distance": 9703.7
+                                }
+                            ],
+                            "geometry": "mljdFsc_eWnD~@vCv@tAx@tAp@VH~@PbBLX@v@FJ@dADZ@E_AG{BF{@@aG@u@HiGBiE?S@O?c@@sA@iCByG@iE?CDcGN{DPoDDc@VoKDeB^sNZoNJmFB{@PwDLgAJa@^iAn@kAdFgK|@qB|DoJZq@bAyBb@aAp@}ABKRg@^w@h@iAZs@|@kBnBoEL[f@gAt@gBZs@FMnCoGhAiCh@oADIr@cBpAyCLYjCcGpCuGNYrB}EnDcJ`@eAJW^w@~AiDHQlBgEHOn@{ATi@N[bDaH^{@~@yBDKP_@v@kBxCqHN_@N]pBoEZo@bB}BlA_BLQ@AdAyAZq@f@gA^iAJ[L_@@G`@mAdBmER_@R_@nAgBf@k@dDwDHInB_Cd@m@pA_Cv@_BRa@Ne@RcAhAmGPaATuAf@qCh@_FXqAFYDQRw@Ze@r@}@|EqFT@PDPLLRBZA\\Mx@INMLWBOEMISYWs@UiA[qBUeBI_AAU?[BiADk@Fy@Ls@Li@Zw@zB{FxCeHd@uAbBeEhBsExBsF|@yBjAuC`BoDfByDhDmHXo@RA`@Gr@WNQFOtAyCHIFEtA`AfAt@hAz@p@gBd@mA`BfA",
+                            "duration": 600.3,
+                            "distance": 9703.7
+                        }
+                    ],
+                    "code": "Ok"
+                }
+            ]
+        }
+        
+        # Check traffic for your specific route
+        result = monitor.check_route_traffic(route_data, "금낭화로_route")
+        
+        if result:
+            print(f"\n✅ Traffic check completed successfully!")
+            print(f"📄 Results saved to database")
+        else:
+            print(f"\n❌ Traffic check failed")
+        
+        # Optionally, you can also add it to continuous monitoring
+        # start_coords = [37.577833, 126.812902]  # lat, lng
+        # end_coords = [37.577824, 126.812899]
+        # monitor.add_route("금낭화로_continuous", start_coords, end_coords)
+        # monitor.start_monitoring()
