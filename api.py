@@ -116,6 +116,7 @@ def analyze_route():
                     }
                 },
                 "traffic_adjusted_route": _extract_traffic_adjusted_route(result),
+                "traffic_adjusted_route_original_format": _generate_traffic_adjusted_route_original_format(result),
                 "recommendations": _generate_recommendations(result)
             }
             
@@ -216,7 +217,8 @@ def analyze_route_simple():
                 "original_duration_seconds": result['route_data']['duration'],
                 "original_distance_meters": result['route_data']['distance'],
                 "traffic_segments_found": len(result['matched_traffic']) if result['matched_traffic'] else 0,
-                "traffic_adjusted_route": _extract_traffic_adjusted_route_simple(result)
+                "traffic_adjusted_route": _extract_traffic_adjusted_route_simple(result),
+                "traffic_adjusted_route_original_format": _generate_traffic_adjusted_route_original_format(result)
             }
             
             return jsonify(response)
@@ -342,6 +344,85 @@ def _extract_traffic_adjusted_route(result):
             "max_kmh": max(traffic_speeds)
         }
     }
+
+def _generate_traffic_adjusted_route_original_format(result):
+    """Generate traffic-adjusted route in the original route data format"""
+    if not result:
+        return None
+    
+    route_data = result['route_data']
+    matched_traffic = result.get('matched_traffic', [])
+    
+    # Calculate traffic-adjusted duration
+    if matched_traffic:
+        traffic_speeds = [match['current_speed'] for match in matched_traffic]
+        avg_traffic_speed = sum(traffic_speeds) / len(traffic_speeds)
+        route_distance_km = route_data['distance'] / 1000
+        
+        if avg_traffic_speed > 0:
+            traffic_duration = (route_distance_km / avg_traffic_speed) * 3600
+        else:
+            traffic_duration = route_data['duration']
+    else:
+        traffic_duration = route_data['duration']
+    
+    # Create traffic-adjusted route structure
+    traffic_adjusted_route = {
+        "resultCode": "Ok",
+        "result": [
+            {
+                "waypoints": [
+                    {
+                        "waypointType": "break",
+                        "name": "Start Location",
+                        "location": {
+                            "longitude": 0.0,
+                            "latitude": 0.0
+                        }
+                    },
+                    {
+                        "waypointType": "last",
+                        "name": "End Location", 
+                        "location": {
+                            "longitude": 0.0,
+                            "latitude": 0.0
+                        }
+                    }
+                ],
+                "routes": [
+                    {
+                        "weight_name": "",
+                        "weight": 0,
+                        "legs": [
+                            {
+                                "summary": "Traffic-adjusted route",
+                                "steps": [],
+                                "duration": traffic_duration,
+                                "distance": route_data['distance']
+                            }
+                        ],
+                        "geometry": route_data.get('geometry', ''),
+                        "duration": traffic_duration,
+                        "distance": route_data['distance']
+                    }
+                ],
+                "code": "Ok"
+            }
+        ]
+    }
+    
+    # Add traffic adjustment metadata
+    traffic_adjusted_route["traffic_metadata"] = {
+        "original_duration": route_data['duration'],
+        "traffic_adjusted_duration": traffic_duration,
+        "time_difference_seconds": traffic_duration - route_data['duration'],
+        "time_difference_percent": ((traffic_duration - route_data['duration']) / route_data['duration'] * 100) if route_data['duration'] > 0 else 0,
+        "traffic_segments_used": len(matched_traffic),
+        "average_traffic_speed_kmh": sum([match['current_speed'] for match in matched_traffic]) / len(matched_traffic) if matched_traffic else 0,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    return traffic_adjusted_route
 
 def _extract_traffic_adjusted_route_simple(result):
     """Extract simplified traffic-adjusted route information"""
