@@ -181,37 +181,122 @@ class TrafficRouteMonitor:
                 road_groups[road_name] = []
             road_groups[road_name].append(match)
         
-        print(f"   📊 Traffic data covers {len(road_groups)} different roads:")
-        for road_name, segments in sorted(road_groups.items(), key=lambda x: len(x[1]), reverse=True)[:10]:
+        print(f"   📊 Traffic data covers {len(road_groups)} different roads in bounding box")
+        
+        # Identify actual route roads from the route data
+        actual_route_roads = ['금낭화로', '양천로', '노들로', '양평로24길', '양평로22사길', '양평로22길', '선유로55길', '선유로53길']
+        
+        # Find matches for actual route roads
+        route_matches = {}
+        other_matches = {}
+        
+        for road_name, segments in road_groups.items():
+            is_route_road = False
+            for route_road in actual_route_roads:
+                if route_road in road_name or road_name in route_road:
+                    if route_road not in route_matches:
+                        route_matches[route_road] = []
+                    route_matches[route_road].extend(segments)
+                    is_route_road = True
+                    break
+            
+            if not is_route_road:
+                other_matches[road_name] = segments
+        
+        # Show route road coverage
+        print(f"\n   🎯 ACTUAL ROUTE ROAD COVERAGE:")
+        total_route_segments = 0
+        for route_road in actual_route_roads:
+            if route_road in route_matches:
+                segments = route_matches[route_road]
+                avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                total_route_segments += len(segments)
+                print(f"     ✅ {route_road}: {len(segments)} segments, avg {avg_speed:.1f} km/h")
+            else:
+                print(f"     ❌ {route_road}: No traffic data found")
+        
+        print(f"\n   📈 Route Coverage Summary:")
+        print(f"     • Route roads with traffic data: {len(route_matches)}/{len(actual_route_roads)}")
+        print(f"     • Total route segments: {total_route_segments}")
+        print(f"     • Other roads in area: {len(other_matches)} ({sum(len(s) for s in other_matches.values())} segments)")
+        
+        # Show top non-route roads (major highways/arterials in the area)
+        print(f"\n   🛣️  Major roads in area (not on route):")
+        sorted_others = sorted(other_matches.items(), key=lambda x: len(x[1]), reverse=True)[:5]
+        for road_name, segments in sorted_others:
             avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
             print(f"     • {road_name}: {len(segments)} segments, avg {avg_speed:.1f} km/h")
         
-        # Analyze speed distribution
-        speeds = [m['current_speed'] for m in matches]
-        speeds.sort()
+        # Calculate route-specific metrics
+        if route_matches:
+            all_route_segments = []
+            for segments in route_matches.values():
+                all_route_segments.extend(segments)
+            
+            route_speeds = [s['current_speed'] for s in all_route_segments]
+            route_avg_speed = sum(route_speeds) / len(route_speeds)
+            
+            print(f"\n   🚗 Route-Specific Traffic Analysis:")
+            print(f"     • Average speed on route roads: {route_avg_speed:.1f} km/h")
+            print(f"     • Route road speed range: {min(route_speeds):.1f} - {max(route_speeds):.1f} km/h")
+            print(f"     • Route coverage: {(total_route_segments/len(matches)*100):.1f}% of traffic data")
+    
+    def _analyze_route_geometry_coverage(self, route_info, matches):
+        """Analyze how well traffic data covers the actual route geometry"""
+        print(f"\n🗺️  Route Geometry Coverage Analysis:")
         
-        print(f"   🚗 Speed Distribution:")
-        print(f"     • Fastest: {max(speeds):.1f} km/h")
-        print(f"     • Slowest: {min(speeds):.1f} km/h")
-        print(f"     • Median: {speeds[len(speeds)//2]:.1f} km/h")
-        
-        # Identify potential route roads
-        route_roads = ['양천로', '노들로', '금낭화로', '선유로']
-        matched_route_roads = []
-        for road in route_roads:
-            for road_name in road_groups.keys():
-                if road in road_name:
-                    matched_route_roads.append((road, road_name, road_groups[road_name]))
-        
-        if matched_route_roads:
-            print(f"   🛣️  Potential route roads found in traffic data:")
-            for expected, actual, segments in matched_route_roads:
-                avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
-                print(f"     • {actual} ({expected}): {len(segments)} segments, {avg_speed:.1f} km/h")
-        else:
-            print(f"   ⚠️  No obvious route roads found in traffic data")
-            print(f"     • This suggests the route uses smaller local roads")
-            print(f"     • Or the road names don't match between OSRM and traffic API")
+        # Extract route steps and their names
+        if 'legs' in route_info:
+            route_steps = []
+            for leg in route_info['legs']:
+                if 'steps' in leg:
+                    for step in leg['steps']:
+                        step_name = step.get('name', 'unnamed')
+                        step_distance = step.get('distance', 0)
+                        step_duration = step.get('duration', 0)
+                        route_steps.append({
+                            'name': step_name,
+                            'distance': step_distance,
+                            'duration': step_duration
+                        })
+            
+            print(f"   📍 Route consists of {len(route_steps)} segments:")
+            total_distance = 0
+            covered_distance = 0
+            
+            for i, step in enumerate(route_steps):
+                total_distance += step['distance']
+                
+                # Check if this step has traffic data
+                has_traffic = False
+                matching_segments = []
+                
+                for match in matches:
+                    if step['name'] and step['name'] in match['road_name']:
+                        has_traffic = True
+                        matching_segments.append(match)
+                
+                if has_traffic:
+                    covered_distance += step['distance']
+                    avg_speed = sum(m['current_speed'] for m in matching_segments) / len(matching_segments)
+                    status = f"✅ {len(matching_segments)} traffic segments, avg {avg_speed:.1f} km/h"
+                else:
+                    status = "❌ No traffic data"
+                
+                print(f"     {i+1}. {step['name']} ({step['distance']:.0f}m) - {status}")
+            
+            coverage_pct = (covered_distance / total_distance * 100) if total_distance > 0 else 0
+            print(f"\n   📊 Coverage Summary:")
+            print(f"     • Total route distance: {total_distance:.0f} meters")
+            print(f"     • Distance with traffic data: {covered_distance:.0f} meters")
+            print(f"     • Coverage percentage: {coverage_pct:.1f}%")
+            
+            if coverage_pct < 50:
+                print(f"     ⚠️  Low coverage - route may use local roads not monitored by traffic system")
+            elif coverage_pct < 80:
+                print(f"     🟡 Moderate coverage - some route segments have traffic data")
+            else:
+                print(f"     ✅ Good coverage - most route segments have traffic data")
     
     def _show_detailed_match_info(self, match):
         """Show detailed information about a matched traffic segment"""
@@ -333,6 +418,9 @@ class TrafficRouteMonitor:
                     
                     # Show route path analysis
                     self._analyze_route_path_matching(geographic_matches)
+                    
+                    # Show route geometry analysis
+                    self._analyze_route_geometry_coverage(route_info, geographic_matches)
                     
                     # Show detailed info for first match
                     if geographic_matches:
