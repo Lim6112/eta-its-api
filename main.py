@@ -119,6 +119,100 @@ class TrafficRouteMonitor:
         print(f"⏰ Next update in {UPDATE_INTERVAL_MINUTES} minutes")
         print(f"{'='*50}")
     
+    def check_route_traffic(self, route_data, route_name="custom_route"):
+        """Check traffic for a specific route from route data"""
+        print(f"\n🔍 Checking traffic for route: {route_name}")
+        
+        # Extract waypoints
+        start_coords, end_coords = self.route_processor.extract_waypoints_from_route_data(route_data)
+        
+        if not start_coords or not end_coords:
+            print("❌ Could not extract coordinates from route data")
+            return None
+        
+        print(f"📍 Start: {start_coords}")
+        print(f"📍 End: {end_coords}")
+        
+        # Calculate bounding box with larger buffer for short routes
+        buffer = 0.01  # Larger buffer for better traffic data coverage
+        min_lng = min(start_coords[1], end_coords[1]) - buffer
+        max_lng = max(start_coords[1], end_coords[1]) + buffer
+        min_lat = min(start_coords[0], end_coords[0]) - buffer
+        max_lat = max(start_coords[0], end_coords[0]) + buffer
+        
+        bbox = (min_lng, max_lng, min_lat, max_lat)
+        print(f"🗺️  Bounding box: {bbox}")
+        
+        # Fetch traffic data
+        traffic_data = self.traffic_fetcher.fetch_traffic_data(*bbox)
+        
+        if traffic_data:
+            print(f"✅ Traffic data received")
+            
+            # Store traffic data
+            self.traffic_fetcher.store_traffic_data(traffic_data)
+            
+            # Get current OSRM route for comparison
+            current_route = self.route_processor.get_route_from_osrm(start_coords, end_coords)
+            
+            if current_route:
+                route_info = current_route['routes'][0]
+                print(f"📊 Current route info:")
+                print(f"   Duration: {route_info['duration']:.1f} seconds")
+                print(f"   Distance: {route_info['distance']:.1f} meters")
+                
+                # Analyze traffic data
+                self._analyze_traffic_data(traffic_data, bbox)
+                
+                return {
+                    'route_data': route_info,
+                    'traffic_data': traffic_data,
+                    'bbox': bbox,
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                print("❌ Could not get OSRM route")
+        else:
+            print("❌ Failed to fetch traffic data")
+        
+        return None
+    
+    def _analyze_traffic_data(self, traffic_data, bbox):
+        """Analyze and display traffic data"""
+        if not traffic_data or 'data' not in traffic_data:
+            print("📊 No traffic data to analyze")
+            return
+        
+        data_items = traffic_data.get('data', [])
+        print(f"📊 Traffic analysis:")
+        print(f"   Total data points: {len(data_items)}")
+        
+        if len(data_items) > 0:
+            # Analyze traffic levels if available
+            traffic_levels = []
+            speeds = []
+            
+            for item in data_items:
+                if 'trafficLevel' in item:
+                    traffic_levels.append(item['trafficLevel'])
+                if 'speed' in item:
+                    speeds.append(item['speed'])
+            
+            if traffic_levels:
+                avg_traffic_level = sum(traffic_levels) / len(traffic_levels)
+                print(f"   Average traffic level: {avg_traffic_level:.1f}")
+            
+            if speeds:
+                avg_speed = sum(speeds) / len(speeds)
+                print(f"   Average speed: {avg_speed:.1f} km/h")
+            
+            # Show sample data
+            print(f"   Sample traffic points:")
+            for i, item in enumerate(data_items[:3]):  # Show first 3 items
+                print(f"     {i+1}. {item}")
+        else:
+            print("   No detailed traffic data available")
+
     def start_monitoring(self):
         """Start the monitoring service"""
         print(f"\n🚀 Starting traffic route monitoring...")
@@ -142,12 +236,152 @@ class TrafficRouteMonitor:
 if __name__ == "__main__":
     monitor = TrafficRouteMonitor()
     
-    # Example: Add a route in Seoul (Yeouido area)
-    # Replace with your actual coordinates
-    start_coords = [37.525, 126.925]  # lat, lng
-    end_coords = [37.535, 126.935]
+    # Your specific route data
+    route_data = {
+        "resultCode": "Ok",
+        "result": [
+            {
+                "waypoints": [
+                    {
+                        "waypointType": "break",
+                        "name": "금낭화로",
+                        "location": {
+                            "longitude": 126.812902,
+                            "latitude": 37.577833
+                        }
+                    },
+                    {
+                        "waypointType": "last",
+                        "name": "금낭화로",
+                        "location": {
+                            "longitude": 126.812899,
+                            "latitude": 37.577824
+                        }
+                    }
+                ],
+                "routes": [
+                    {
+                        "weight_name": "",
+                        "weight": 0,
+                        "legs": [
+                            {
+                                "summary": "금낭화로",
+                                "steps": [
+                                    {
+                                        "name": "금낭화로",
+                                        "mode": "driving",
+                                        "maneuver": {
+                                            "type": "depart",
+                                            "modifier": "left",
+                                            "location": {
+                                                "longitude": 126.812902,
+                                                "latitude": 37.577833
+                                            },
+                                            "bearing_before": 0,
+                                            "bearing_after": 0
+                                        },
+                                        "intersections": [
+                                            {
+                                                "out": 0,
+                                                "location": {
+                                                    "longitude": 126.812902,
+                                                    "latitude": 37.577833
+                                                },
+                                                "indications": [
+                                                    "uturn"
+                                                ],
+                                                "in": None,
+                                                "entry": [
+                                                    True
+                                                ],
+                                                "bearings": [
+                                                    195
+                                                ]
+                                            }
+                                        ],
+                                        "instruction": "left",
+                                        "geometry": "mljdFsc_eW@?",
+                                        "duration": 0.0,
+                                        "distance": 1.0
+                                    },
+                                    {
+                                        "name": "금낭화로",
+                                        "mode": "driving",
+                                        "maneuver": {
+                                            "type": "arrive",
+                                            "modifier": None,
+                                            "location": {
+                                                "longitude": 126.812899,
+                                                "latitude": 37.577824
+                                            },
+                                            "bearing_before": 0,
+                                            "bearing_after": 0
+                                        },
+                                        "intersections": [
+                                            {
+                                                "out": None,
+                                                "location": {
+                                                    "longitude": 126.812899,
+                                                    "latitude": 37.577824
+                                                },
+                                                "indications": [
+                                                    "uturn"
+                                                ],
+                                                "in": 0,
+                                                "entry": [
+                                                    True
+                                                ],
+                                                "bearings": [
+                                                    15
+                                                ]
+                                            }
+                                        ],
+                                        "instruction": None,
+                                        "geometry": "kljdFsc_eW",
+                                        "duration": 0.0,
+                                        "distance": 0.0
+                                    }
+                                ],
+                                "duration": 0.0,
+                                "distance": 1.0,
+                                "annotation": {
+                                    "nodes": [
+                                        2702609963,
+                                        436821289
+                                    ],
+                                    "duration": [
+                                        0
+                                    ],
+                                    "distance": [
+                                        1
+                                    ],
+                                    "datasource": [
+                                        0
+                                    ]
+                                }
+                            }
+                        ],
+                        "geometry": "mljdFsc_eW@?",
+                        "duration": 0.0,
+                        "distance": 1.0
+                    }
+                ],
+                "code": "Ok"
+            }
+        ]
+    }
     
-    monitor.add_route("yeouido_route", start_coords, end_coords)
+    # Check traffic for your specific route
+    result = monitor.check_route_traffic(route_data, "금낭화로_route")
     
-    # Start monitoring
-    monitor.start_monitoring()
+    if result:
+        print(f"\n✅ Traffic check completed successfully!")
+        print(f"📄 Results saved to database")
+    else:
+        print(f"\n❌ Traffic check failed")
+    
+    # Optionally, you can also add it to continuous monitoring
+    # start_coords = [37.577833, 126.812902]  # lat, lng
+    # end_coords = [37.577824, 126.812899]
+    # monitor.add_route("금낭화로_continuous", start_coords, end_coords)
+    # monitor.start_monitoring()

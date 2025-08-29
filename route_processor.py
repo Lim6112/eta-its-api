@@ -73,6 +73,32 @@ class RouteProcessor:
         
         return (min_lng, max_lng, min_lat, max_lat)
     
+    def calculate_bbox_from_route_data(self, route_data, buffer=0.005):
+        """Calculate bounding box from complete route data structure"""
+        if 'result' in route_data and len(route_data['result']) > 0:
+            routes = route_data['result'][0]['routes']
+            if len(routes) > 0:
+                geometry = routes[0]['geometry']
+                return self.calculate_route_bbox({'coordinates': self._decode_polyline(geometry)}, buffer)
+        return None
+    
+    def _decode_polyline(self, encoded_polyline):
+        """Decode polyline geometry to coordinates"""
+        # This is a simplified decoder - you might want to use a proper polyline library
+        # For now, extract coordinates from waypoints as fallback
+        return []
+    
+    def extract_waypoints_from_route_data(self, route_data):
+        """Extract start and end coordinates from route data"""
+        if 'result' in route_data and len(route_data['result']) > 0:
+            waypoints = route_data['result'][0]['waypoints']
+            if len(waypoints) >= 2:
+                start = waypoints[0]['location']
+                end = waypoints[-1]['location']
+                return ([start['latitude'], start['longitude']], 
+                       [end['latitude'], end['longitude']])
+        return None, None
+    
     def calculate_updated_route(self, original_route, traffic_data):
         """Calculate route with updated traffic speeds"""
         # This would integrate traffic speeds into OSRM calculation
