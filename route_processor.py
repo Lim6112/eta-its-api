@@ -110,7 +110,7 @@ class RouteProcessor:
         # Sort by distance to route (closest first)
         matched_data.sort(key=lambda x: x['distance_to_route_m'])
         
-        print(f"Matched {len(matched_data)} traffic links to route")
+        print(f"Database matching: {len(matched_data)} traffic links to route")
         return matched_data
     
     def _coords_to_linestring_wkt(self, coords):

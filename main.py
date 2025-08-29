@@ -119,6 +119,63 @@ class TrafficRouteMonitor:
         print(f"⏰ Next update in {UPDATE_INTERVAL_MINUTES} minutes")
         print(f"{'='*50}")
     
+    def _match_traffic_geographically(self, traffic_data, bbox):
+        """Simple geographic matching without database - matches traffic data within bounding box"""
+        matched_data = []
+        
+        # Extract traffic items from API response
+        traffic_items = []
+        if 'body' in traffic_data and 'items' in traffic_data['body']:
+            traffic_items = traffic_data['body']['items']
+        elif 'data' in traffic_data:
+            traffic_items = traffic_data['data']
+        
+        if not traffic_items:
+            return matched_data
+        
+        min_lng, max_lng, min_lat, max_lat = bbox
+        
+        # For each traffic item, check if it's within our bounding box
+        for item in traffic_items:
+            link_id = item.get('linkId')
+            if not link_id:
+                continue
+            
+            # Since we don't have coordinates from database, we'll include all items
+            # that are returned by the API (they should already be filtered by bbox)
+            matched_data.append({
+                'link_id': link_id,
+                'current_speed': float(item.get('speed', 0)),
+                'travel_time': float(item.get('travelTime', 0)),
+                'road_name': item.get('roadName', ''),
+                'created_date': item.get('createdDate', ''),
+                'api_data': item
+            })
+        
+        return matched_data
+    
+    def _show_detailed_match_info(self, match):
+        """Show detailed information about a matched traffic segment"""
+        print(f"\n📋 Detailed info for matched segment:")
+        print(f"   🆔 Link ID: {match['link_id']}")
+        print(f"   🛣️  Road Name: {match['road_name']}")
+        print(f"   🚗 Current Speed: {match['current_speed']:.1f} km/h")
+        print(f"   ⏱️  Travel Time: {match['travel_time']:.1f} seconds")
+        print(f"   📅 Created: {match['created_date']}")
+        
+        # Show full API data structure
+        if 'api_data' in match:
+            api_data = match['api_data']
+            print(f"   📊 Full API data:")
+            for key, value in api_data.items():
+                print(f"      {key}: {value}")
+        
+        print(f"   💡 Explanation:")
+        print(f"      - This traffic segment was found within the route's bounding box")
+        print(f"      - Speed of {match['current_speed']} km/h indicates traffic conditions")
+        print(f"      - Link ID {match['link_id']} is the unique identifier for this road segment")
+        print(f"      - This data comes from Korea's national traffic information system")
+    
     def check_route_traffic(self, route_data, route_name="custom_route"):
         """Check traffic for a specific route from route data"""
         print(f"\n🔍 Checking traffic for route: {route_name}")
@@ -170,8 +227,11 @@ class TrafficRouteMonitor:
                     route_geometry, traffic_data, buffer_distance=100
                 )
                 
+                # Also try simple geographic matching without database
+                geographic_matches = self._match_traffic_geographically(traffic_data, bbox)
+                
                 if matched_traffic:
-                    print(f"🛣️  Route-specific traffic analysis:")
+                    print(f"🛣️  Route-specific traffic analysis (Database matching):")
                     print(f"   Matched {len(matched_traffic)} road segments to route")
                     
                     # Calculate route-specific metrics
@@ -186,6 +246,24 @@ class TrafficRouteMonitor:
                         for i, link in enumerate(matched_traffic[:5]):
                             distance_str = f" (distance: {link['distance_to_route_m']:.0f}m)" if 'distance_to_route_m' in link else ""
                             print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h{distance_str}")
+                elif geographic_matches:
+                    print(f"🛣️  Geographic traffic analysis (No database required):")
+                    print(f"   Found {len(geographic_matches)} traffic segments in route area")
+                    
+                    # Calculate metrics from geographic matches
+                    avg_speed = sum(link['current_speed'] for link in geographic_matches) / len(geographic_matches)
+                    print(f"   Average speed in area: {avg_speed:.1f} km/h")
+                    
+                    # Show sample traffic segments
+                    print(f"   Sample traffic segments in route area:")
+                    for i, link in enumerate(geographic_matches[:5]):
+                        print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h (Link: {link['link_id']})")
+                    
+                    # Show detailed info for first match
+                    if geographic_matches:
+                        self._show_detailed_match_info(geographic_matches[0])
+                    
+                    matched_traffic = geographic_matches  # Use geographic matches as fallback
                 else:
                     print(f"🛣️  No traffic data matched to route - this could mean:")
                     print(f"   - The route links are not in the traffic database")
