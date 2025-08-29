@@ -154,6 +154,65 @@ class TrafficRouteMonitor:
         
         return matched_data
     
+    def _format_timestamp(self, timestamp_str):
+        """Format Korean traffic API timestamp"""
+        try:
+            if len(timestamp_str) == 14:  # YYYYMMDDHHMMSS
+                year = timestamp_str[:4]
+                month = timestamp_str[4:6]
+                day = timestamp_str[6:8]
+                hour = timestamp_str[8:10]
+                minute = timestamp_str[10:12]
+                second = timestamp_str[12:14]
+                return f"{year}-{month}-{day} {hour}:{minute}:{second}"
+        except:
+            pass
+        return timestamp_str
+    
+    def _analyze_route_path_matching(self, matches):
+        """Analyze how well traffic data matches the actual route path"""
+        print(f"\n🔍 Route Path Matching Analysis:")
+        
+        # Group by road names
+        road_groups = {}
+        for match in matches:
+            road_name = match['road_name']
+            if road_name not in road_groups:
+                road_groups[road_name] = []
+            road_groups[road_name].append(match)
+        
+        print(f"   📊 Traffic data covers {len(road_groups)} different roads:")
+        for road_name, segments in sorted(road_groups.items(), key=lambda x: len(x[1]), reverse=True)[:10]:
+            avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
+            print(f"     • {road_name}: {len(segments)} segments, avg {avg_speed:.1f} km/h")
+        
+        # Analyze speed distribution
+        speeds = [m['current_speed'] for m in matches]
+        speeds.sort()
+        
+        print(f"   🚗 Speed Distribution:")
+        print(f"     • Fastest: {max(speeds):.1f} km/h")
+        print(f"     • Slowest: {min(speeds):.1f} km/h")
+        print(f"     • Median: {speeds[len(speeds)//2]:.1f} km/h")
+        
+        # Identify potential route roads
+        route_roads = ['양천로', '노들로', '금낭화로', '선유로']
+        matched_route_roads = []
+        for road in route_roads:
+            for road_name in road_groups.keys():
+                if road in road_name:
+                    matched_route_roads.append((road, road_name, road_groups[road_name]))
+        
+        if matched_route_roads:
+            print(f"   🛣️  Potential route roads found in traffic data:")
+            for expected, actual, segments in matched_route_roads:
+                avg_speed = sum(s['current_speed'] for s in segments) / len(segments)
+                print(f"     • {actual} ({expected}): {len(segments)} segments, {avg_speed:.1f} km/h")
+        else:
+            print(f"   ⚠️  No obvious route roads found in traffic data")
+            print(f"     • This suggests the route uses smaller local roads")
+            print(f"     • Or the road names don't match between OSRM and traffic API")
+    
     def _show_detailed_match_info(self, match):
         """Show detailed information about a matched traffic segment"""
         print(f"\n📋 Detailed info for matched segment:")
@@ -170,11 +229,24 @@ class TrafficRouteMonitor:
             for key, value in api_data.items():
                 print(f"      {key}: {value}")
         
-        print(f"   💡 Explanation:")
-        print(f"      - This traffic segment was found within the route's bounding box")
-        print(f"      - Speed of {match['current_speed']} km/h indicates traffic conditions")
-        print(f"      - Link ID {match['link_id']} is the unique identifier for this road segment")
-        print(f"      - This data comes from Korea's national traffic information system")
+        # Analyze traffic conditions
+        speed = match['current_speed']
+        if speed >= 50:
+            condition = "🟢 Good flow"
+        elif speed >= 30:
+            condition = "🟡 Moderate traffic"
+        elif speed >= 15:
+            condition = "🟠 Heavy traffic"
+        else:
+            condition = "🔴 Congested"
+        
+        print(f"   💡 Analysis:")
+        print(f"      - Traffic Condition: {condition}")
+        print(f"      - This segment is part of {match['road_name']} (증산로)")
+        print(f"      - Speed of {match['current_speed']} km/h vs typical urban speed ~50 km/h")
+        print(f"      - Link connects nodes {api_data.get('startNodeId', 'N/A')} → {api_data.get('endNodeId', 'N/A')}")
+        print(f"      - Data freshness: {self._format_timestamp(match['created_date'])}")
+        print(f"      - Geographic matching used (database spatial matching failed)")
     
     def check_route_traffic(self, route_data, route_name="custom_route"):
         """Check traffic for a specific route from route data"""
@@ -258,6 +330,9 @@ class TrafficRouteMonitor:
                     print(f"   Sample traffic segments in route area:")
                     for i, link in enumerate(geographic_matches[:5]):
                         print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h (Link: {link['link_id']})")
+                    
+                    # Show route path analysis
+                    self._analyze_route_path_matching(geographic_matches)
                     
                     # Show detailed info for first match
                     if geographic_matches:
