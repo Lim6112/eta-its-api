@@ -25,33 +25,157 @@ class RouteProcessor:
             print(f"Error getting OSRM route: {e}")
             return None
     
-    def match_traffic_to_network(self, traffic_data):
-        """Match traffic data to node/link network"""
+    def match_traffic_to_route(self, route_geometry, traffic_data, buffer_distance=50):
+        """Match traffic data to specific route path using spatial analysis"""
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
         matched_data = []
         
-        # Assuming traffic_data contains link/node IDs
-        for item in traffic_data.get('data', []):
-            if 'linkId' in item:
-                # Get actual coordinates from your network data
+        # Extract traffic items from API response
+        traffic_items = []
+        if 'body' in traffic_data and 'items' in traffic_data['body']:
+            traffic_items = traffic_data['body']['items']
+        elif 'data' in traffic_data:
+            traffic_items = traffic_data['data']
+        
+        if not traffic_items:
+            print("No traffic items found in API response")
+            cur.close()
+            conn.close()
+            return matched_data
+        
+        # Create route line geometry from coordinates
+        if isinstance(route_geometry, str):
+            # If it's an encoded polyline, decode it first
+            route_coords = self._decode_polyline_simple(route_geometry)
+        else:
+            route_coords = route_geometry.get('coordinates', [])
+        
+        if not route_coords:
+            print("No route coordinates available")
+            cur.close()
+            conn.close()
+            return matched_data
+        
+        # Convert route coordinates to PostGIS LineString
+        route_wkt = self._coords_to_linestring_wkt(route_coords)
+        
+        for item in traffic_items:
+            link_id = item.get('linkId')
+            if not link_id:
+                continue
+                
+            try:
+                # Find links that intersect with route buffer
                 cur.execute("""
-                    SELECT ST_X(geom) as lng, ST_Y(geom) as lat, speed_limit
-                    FROM moct_links 
+                    SELECT 
+                        link_id,
+                        ST_X(ST_StartPoint(geom)) as start_lng,
+                        ST_Y(ST_StartPoint(geom)) as start_lat,
+                        ST_X(ST_EndPoint(geom)) as end_lng,
+                        ST_Y(ST_EndPoint(geom)) as end_lat,
+                        ST_Length(geom::geography) as length_m,
+                        ST_Distance(geom::geography, ST_GeomFromText(%s, 4326)::geography) as distance_to_route
+                    FROM moct_link 
                     WHERE link_id = %s
-                """, (item['linkId'],))
+                    AND ST_DWithin(geom::geography, ST_GeomFromText(%s, 4326)::geography, %s)
+                """, (route_wkt, link_id, route_wkt, buffer_distance))
                 
                 result = cur.fetchone()
                 if result:
                     matched_data.append({
-                        'link_id': item['linkId'],
-                        'lng': result[0],
-                        'lat': result[1],
-                        'speed_limit': result[2],
-                        'current_speed': item.get('speed', 0),
-                        'traffic_level': item.get('trafficLevel', 0)
+                        'link_id': link_id,
+                        'start_lng': result[1],
+                        'start_lat': result[2],
+                        'end_lng': result[3],
+                        'end_lat': result[4],
+                        'length_m': result[5],
+                        'distance_to_route_m': result[6],
+                        'current_speed': float(item.get('speed', 0)),
+                        'travel_time': float(item.get('travelTime', 0)),
+                        'road_name': item.get('roadName', ''),
+                        'created_date': item.get('createdDate', ''),
+                        'api_data': item
                     })
+            except Exception as e:
+                print(f"Error matching link {link_id}: {e}")
+                continue
+        
+        cur.close()
+        conn.close()
+        
+        # Sort by distance to route (closest first)
+        matched_data.sort(key=lambda x: x['distance_to_route_m'])
+        
+        print(f"Matched {len(matched_data)} traffic links to route")
+        return matched_data
+    
+    def _coords_to_linestring_wkt(self, coords):
+        """Convert coordinate array to WKT LineString format"""
+        if not coords or len(coords) < 2:
+            return None
+        
+        coord_pairs = []
+        for coord in coords:
+            if len(coord) >= 2:
+                coord_pairs.append(f"{coord[0]} {coord[1]}")
+        
+        if len(coord_pairs) < 2:
+            return None
+            
+        return f"LINESTRING({', '.join(coord_pairs)})"
+    
+    def _decode_polyline_simple(self, encoded_polyline):
+        """Simple polyline decoder - you may want to use a proper library like polyline"""
+        # For now, return empty array - implement proper decoding if needed
+        # You can use: pip install polyline
+        # import polyline
+        # return polyline.decode(encoded_polyline)
+        return []
+    
+    def match_traffic_to_network(self, traffic_data):
+        """Match traffic data to node/link network (legacy method)"""
+        conn = psycopg2.connect(**DB_CONFIG)
+        cur = conn.cursor()
+        
+        matched_data = []
+        
+        # Extract traffic items from API response
+        traffic_items = []
+        if 'body' in traffic_data and 'items' in traffic_data['body']:
+            traffic_items = traffic_data['body']['items']
+        elif 'data' in traffic_data:
+            traffic_items = traffic_data['data']
+        
+        for item in traffic_items:
+            link_id = item.get('linkId')
+            if link_id:
+                try:
+                    # Get actual coordinates from your network data
+                    cur.execute("""
+                        SELECT ST_X(ST_StartPoint(geom)) as start_lng, ST_Y(ST_StartPoint(geom)) as start_lat,
+                               ST_X(ST_EndPoint(geom)) as end_lng, ST_Y(ST_EndPoint(geom)) as end_lat
+                        FROM moct_link 
+                        WHERE link_id = %s
+                    """, (link_id,))
+                    
+                    result = cur.fetchone()
+                    if result:
+                        matched_data.append({
+                            'link_id': link_id,
+                            'start_lng': result[0],
+                            'start_lat': result[1],
+                            'end_lng': result[2],
+                            'end_lat': result[3],
+                            'current_speed': float(item.get('speed', 0)),
+                            'travel_time': float(item.get('travelTime', 0)),
+                            'road_name': item.get('roadName', ''),
+                            'api_data': item
+                        })
+                except Exception as e:
+                    print(f"Error processing link {link_id}: {e}")
+                    continue
         
         cur.close()
         conn.close()
@@ -101,12 +225,39 @@ class RouteProcessor:
     
     def calculate_updated_route(self, original_route, traffic_data):
         """Calculate route with updated traffic speeds"""
-        # This would integrate traffic speeds into OSRM calculation
-        # For now, return modified route data
-        matched_traffic = self.match_traffic_to_network(traffic_data)
+        # Get route geometry from original route
+        route_geometry = original_route['routes'][0].get('geometry', '')
         
-        return {
-            'original_route': original_route,
-            'traffic_data': matched_traffic,
-            'timestamp': datetime.now().isoformat()
-        }
+        # Match traffic to the specific route path
+        matched_traffic = self.match_traffic_to_route(route_geometry, traffic_data)
+        
+        # Calculate route performance metrics
+        if matched_traffic:
+            total_segments = len(matched_traffic)
+            avg_speed = sum(link['current_speed'] for link in matched_traffic) / total_segments
+            total_length = sum(link.get('length_m', 0) for link in matched_traffic)
+            
+            # Estimate travel time based on matched traffic
+            estimated_time = 0
+            for link in matched_traffic:
+                if link['current_speed'] > 0:
+                    estimated_time += (link.get('length_m', 0) / 1000) / link['current_speed'] * 3600
+            
+            return {
+                'original_route': original_route,
+                'matched_traffic': matched_traffic,
+                'route_metrics': {
+                    'matched_segments': total_segments,
+                    'avg_speed_kmh': avg_speed,
+                    'total_length_m': total_length,
+                    'estimated_time_s': estimated_time
+                },
+                'timestamp': datetime.now().isoformat()
+            }
+        else:
+            return {
+                'original_route': original_route,
+                'matched_traffic': [],
+                'route_metrics': None,
+                'timestamp': datetime.now().isoformat()
+            }

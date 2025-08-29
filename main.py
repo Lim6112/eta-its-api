@@ -164,9 +164,32 @@ class TrafficRouteMonitor:
                 # Analyze traffic data
                 self._analyze_traffic_data(traffic_data, bbox)
                 
+                # Match traffic to route path
+                route_geometry = route_info.get('geometry', '')
+                matched_traffic = self.route_processor.match_traffic_to_route(
+                    route_geometry, traffic_data, buffer_distance=100
+                )
+                
+                if matched_traffic:
+                    print(f"🛣️  Route-specific traffic analysis:")
+                    print(f"   Matched {len(matched_traffic)} road segments to route")
+                    
+                    # Calculate route-specific metrics
+                    total_length = sum(link['length_m'] for link in matched_traffic if 'length_m' in link)
+                    avg_speed_on_route = sum(link['current_speed'] for link in matched_traffic) / len(matched_traffic)
+                    
+                    print(f"   Total matched road length: {total_length:.0f} meters")
+                    print(f"   Average speed on route: {avg_speed_on_route:.1f} km/h")
+                    
+                    # Show closest traffic segments
+                    print(f"   Closest traffic segments:")
+                    for i, link in enumerate(matched_traffic[:5]):
+                        print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h (distance: {link['distance_to_route_m']:.0f}m)")
+                
                 return {
                     'route_data': route_info,
                     'traffic_data': traffic_data,
+                    'matched_traffic': matched_traffic,
                     'bbox': bbox,
                     'timestamp': datetime.now().isoformat()
                 }
